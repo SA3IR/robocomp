@@ -1,0 +1,15 @@
+
+module RoboComppersonFollower{
+	struct Pose{
+		float x;
+		float y;
+		float z;
+		float orientation;
+	};
+	interface personFollower{
+		void updatePersonPose(Pose p);
+		void personLost();	
+	};
+};
+  
+

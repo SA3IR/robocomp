@@ -1,0 +1,20 @@
+module RoboCompMiraLaser{
+	struct PointT{
+		float x;
+		float y;
+		float angle;
+		float range;
+	};
+
+	sequence<PointT> LaserDataT;
+
+	interface LaserReporter{
+		void toggleLaserReport(bool enable);
+	};
+
+	interface Laser{
+		void reportLaserData(LaserDataT data);
+	};
+};
+
+  

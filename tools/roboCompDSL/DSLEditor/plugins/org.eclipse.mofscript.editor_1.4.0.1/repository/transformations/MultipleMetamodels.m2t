@@ -1,0 +1,40 @@
+/*
+  Copyright (c) 2005, 2006, 2007, 2008 SINTEF
+  All rights reserved. This program and the accompanying materials
+  are made available under the terms of the Eclipse Public License v1.0
+  which accompanies this distribution, and is available at
+  http://www.eclipse.org/legal/epl-v10.html
+
+  Contributors:
+     Jon Oldevik, Tor Neple, Gøran Olsen, SINTEF (Norway)
+  
+     Developed as part of the MODELWARE (http://www.modelware-ist.org/) and 
+    MODELPLEX (http://www.modelplex-ist.org/) IP projects 
+*/
+
+texttransformation MultipleMetaModels (in uml:"http://www.eclipse.org/uml2/2.1.0/UML", in
+ec:"http://www.eclipse.org/emf/2002/Ecore") {
+
+  main () { // can also use module::main, which is the same
+    uml.objectsOfType (uml.Class)->forEach (cl) {
+      cl.ecoreModelTest()
+    }
+   // '\n Looking for ecore objects'
+    ec.objectsOfType (ec.EClass)->forEach (eccl) {
+      eccl.umlModelTest()
+    }
+    
+  }
+
+  ec.EClass::ecoreModelTest () {
+    stdout.println ("Ecore class: " + self.name)
+    if (self.oclIsTypeOf(ec.EClass)){
+      
+    }
+  }
+ 
+  uml.Class::umlModelTest(){
+    stdout.println ("Class: " + self.name)
+  }    
+
+}

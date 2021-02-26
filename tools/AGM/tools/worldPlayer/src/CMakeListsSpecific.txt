@@ -1,0 +1,21 @@
+
+# Sources set
+SET ( SOURCES
+  specificworker.cpp
+  specificmonitor.cpp
+  robocompDumper.cpp
+  genericDumper.cpp
+)
+
+# Headers set
+SET ( HEADERS
+  specificworker.h
+  specificmonitor.h
+  robocompDumper.h
+  genericDumper.h
+)
+
+set(CMAKE_CXX_STANDARD 11)
+
+SET (LIBS ${LIBS} -L${CMAKE_BINARY_DIR}/tools/AGM -lagm )
+

@@ -1,0 +1,7 @@
+module RoboCompCAIWinKinectController
+{
+	interface AgentToWinKinectController
+	{
+		void restartWinKinectComp();
+	};
+};

@@ -1,0 +1,23 @@
+module RoboCompHandWritingAndroid{
+	
+	enum UIType { HDRAW, HWRITE, NOTHING };
+	enum NAnswers { ONE, TWO, THREE, FOUR, NONE, YESNO };
+
+
+	sequence <byte> MinimentalImg;
+
+
+	interface HWInterface
+	{
+		void setUI(UIType ui);
+		void changeButtonsState(NOptions op);
+	};
+
+	interface HWResult
+	{
+		void setImg(MinimentalImg img);
+		void setText(string text);
+	};
+	
+};
+

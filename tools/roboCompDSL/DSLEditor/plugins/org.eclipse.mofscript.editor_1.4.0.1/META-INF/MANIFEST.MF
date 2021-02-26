@@ -1,0 +1,35 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: MOFScript Editor Plug-in
+Bundle-SymbolicName: org.eclipse.mofscript.editor; singleton:=true
+Bundle-Version: 1.4.0.1
+Bundle-ClassPath: org.eclipse.mofscript.editor.jar
+Bundle-Activator: org.eclipse.mofscript.editor.MofScriptEditorPlugin
+Bundle-Vendor: SINTEF
+Bundle-Localization: plugin
+Export-Package: org.eclipse.mofscript.editor,
+ org.eclipse.mofscript.editor.hyperlink,
+ org.eclipse.mofscript.editor.properties,
+ org.eclipse.mofscript.editor.uml2Extension,
+ org.eclipse.mofscript.editor.wizards
+Require-Bundle: org.eclipse.ui,
+ org.eclipse.core.runtime,
+ org.eclipse.jface.text,
+ org.eclipse.ui.editors,
+ org.eclipse.ui.workbench.texteditor,
+ org.eclipse.ui.views,
+ org.eclipse.emf.ecore,
+ org.eclipse.emf.ecore.xmi,
+ org.eclipse.core.resources,
+ org.eclipse.ui.ide,
+ org.eclipse.ui.console,
+ org.eclipse.help,
+ org.eclipse.uml2.uml,
+ org.eclipse.jdt.core,
+ org.eclipse.mofscript.model;visibility:=reexport,
+ org.eclipse.mofscript.parser;visibility:=reexport,
+ org.eclipse.mofscript.runtime,
+ org.sintef.tramde.mofscript.adapter;resolution:=optional,
+ org.eclipse.mofscript.runtime
+Bundle-ActivationPolicy: lazy
+

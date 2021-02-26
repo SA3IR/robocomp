@@ -1,0 +1,26 @@
+# Sources set
+SET ( SOURCES
+  specificworker.cpp
+  specificmonitor.cpp
+  $ENV{ROBOCOMP}/classes/rcdraw/rcdraw.cpp
+)
+
+SET (LIBS ${LIBS}
+  -L../../../..
+  -L../../..
+  -lboost_system
+)
+
+# Headers set
+SET ( HEADERS
+  specificworker.h
+  specificmonitor.h
+)
+
+SET (LIBS ${LIBS} -losgViewer )
+INCLUDE_DIRECTORIES( /usr/local/include/osg /usr/include/osgViewer /usr/include/libxml2/ ${CMAKE_SOURCE_DIR}/libs/osgviewer/include )
+SET( LIBS ${LIBS} -L/usr/local/lib64/ -L${CMAKE_BINARY_DIR}/tools/AGM -lagm  -losg -losgViewer -losgGA -losgText -losgDB -losgUtil )
+ADD_DEFINITIONS( -std=c++11 )
+
+
+SET (LIBS ${LIBS}  )

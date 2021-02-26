@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<uml:Model xmi:version="2.1" xmlns:xmi="http://schema.omg.org/spec/XMI/2.1" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" xmlns:uml="http://www.eclipse.org/uml2/2.1.0/UML" xmi:id="_JA9i0YpdEdmXGqkFN4PwvA" name="Service Model CHANGES">
+  <eAnnotations xmi:id="_JA9i0opdEdmXGqkFN4PwvA" source="http://www.eclipse.org/emf/2002/Ecore"/>
+  <packageImport xmi:id="_JA9i3IpdEdmXGqkFN4PwvA">
+    <importedPackage xmi:type="uml:Model" href="pathmap://UML_LIBRARIES/UMLPrimitiveTypes.library.uml#_0"/>
+  </packageImport>
+  <packagedElement xmi:type="uml:Package" xmi:id="_JA9i3YpdEdmXGqkFN4PwvA" name="Interface Model2" clientDependency="_JA9jHIpdEdmXGqkFN4PwvA">
+    <packagedElement xmi:type="uml:Package" xmi:id="_JA9i3opdEdmXGqkFN4PwvA" name="PersonnelService">
+      <eAnnotations xmi:id="_JA9i34pdEdmXGqkFN4PwvA" source="http://www.eclipse.org/uml2/2.0.0/UML">
+        <details xmi:id="_JA9i4IpdEdmXGqkFN4PwvA" key="BusinessServiceSpec"/>
+      </eAnnotations>
+      <packagedElement xmi:type="uml:Interface" xmi:id="_JA9i4YpdEdmXGqkFN4PwvA" name="IPersonnelService">
+        <ownedOperation xmi:id="_JA9i4opdEdmXGqkFN4PwvA" name="updatePerson">
+          <ownedParameter xmi:id="_JA9i44pdEdmXGqkFN4PwvA" name="ReturnResult" type="_JA9i9IpdEdmXGqkFN4PwvA" direction="return"/>
+          <ownedParameter xmi:id="_JA9i5IpdEdmXGqkFN4PwvA" name="person" type="_JA9jAIpdEdmXGqkFN4PwvA"/>
+        </ownedOperation>
+        <ownedOperation xmi:id="_JA9i5YpdEdmXGqkFN4PwvA" name="removePerson">
+          <ownedParameter xmi:id="_JA9i5opdEdmXGqkFN4PwvA" name="id" type="_JA9jO4pdEdmXGqkFN4PwvA"/>
+        </ownedOperation>
+        <ownedOperation xmi:id="_JA9i54pdEdmXGqkFN4PwvA" name="findPersonsByRole">
+          <ownedParameter xmi:id="_JA9i6IpdEdmXGqkFN4PwvA" name="role" type="_JA9jO4pdEdmXGqkFN4PwvA"/>
+        </ownedOperation>
+        <ownedOperation xmi:id="_JA9i6YpdEdmXGqkFN4PwvA" name="findPersonsByName">
+          <ownedParameter xmi:id="_JA9i6opdEdmXGqkFN4PwvA" name="name" type="_JA9jO4pdEdmXGqkFN4PwvA"/>
+        </ownedOperation>
+        <ownedOperation xmi:id="_JA9i64pdEdmXGqkFN4PwvA" name="findPersonsAll"/>
+        <ownedOperation xmi:id="_JA9i7IpdEdmXGqkFN4PwvA" name="createPerson">
+          <ownedParameter xmi:id="_JA9i7YpdEdmXGqkFN4PwvA" name="ReturnResult" type="_JA9i9IpdEdmXGqkFN4PwvA" direction="return"/>
+          <ownedParameter xmi:id="_JA9i7opdEdmXGqkFN4PwvA" name="id" type="_JA9jO4pdEdmXGqkFN4PwvA"/>
+          <ownedParameter xmi:id="_JA9i74pdEdmXGqkFN4PwvA" name="name" type="_JA9jO4pdEdmXGqkFN4PwvA"/>
+          <ownedParameter xmi:id="_JA9i8IpdEdmXGqkFN4PwvA" name="role" type="_JA9jO4pdEdmXGqkFN4PwvA"/>
+          <ownedParameter xmi:id="_JA9i8YpdEdmXGqkFN4PwvA" name="email" type="_JA9jO4pdEdmXGqkFN4PwvA"/>
+        </ownedOperation>
+        <ownedOperation xmi:id="_JA9i8opdEdmXGqkFN4PwvA" name="findPersonByPrimaryKey">
+          <ownedParameter xmi:id="_JA9i84pdEdmXGqkFN4PwvA" name="id" type="_JA9jO4pdEdmXGqkFN4PwvA"/>
+        </ownedOperation>
+      </packagedElement>
+      <packagedElement xmi:type="uml:Class" xmi:id="_JA9i9IpdEdmXGqkFN4PwvA" name="Person">
+        <eAnnotations xmi:id="_JA9i9YpdEdmXGqkFN4PwvA" source="http://www.eclipse.org/uml2/2.0.0/UML">
+          <details xmi:id="_JA9i9opdEdmXGqkFN4PwvA" key="entity"/>
+        </eAnnotations>
+        <ownedAttribute xmi:id="_JA9i94pdEdmXGqkFN4PwvA" name="Id" visibility="private" type="_JA9jO4pdEdmXGqkFN4PwvA">
+          <eAnnotations xmi:id="_JA9i-IpdEdmXGqkFN4PwvA" source="http://www.eclipse.org/uml2/2.0.0/UML">
+            <details xmi:id="_JA9i-YpdEdmXGqkFN4PwvA" key="key"/>
+          </eAnnotations>
+        </ownedAttribute>
+        <ownedAttribute xmi:id="_JA9i-opdEdmXGqkFN4PwvA" name="Email" visibility="private" type="_JA9jO4pdEdmXGqkFN4PwvA"/>
+        <ownedAttribute xmi:id="_JA9i-4pdEdmXGqkFN4PwvA" name="Name" visibility="private" type="_JA9jO4pdEdmXGqkFN4PwvA"/>
+        <ownedAttribute xmi:id="_JA9i_IpdEdmXGqkFN4PwvA" name="Role" visibility="private" type="_JA9jO4pdEdmXGqkFN4PwvA"/>
+      </packagedElement>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Package" xmi:id="_JA9i_YpdEdmXGqkFN4PwvA" name="PersonnelUserService">
+      <eAnnotations xmi:id="_JA9i_opdEdmXGqkFN4PwvA" source="http://www.eclipse.org/uml2/2.0.0/UML">
+        <details xmi:id="_JA9i_4pdEdmXGqkFN4PwvA" key="UserServiceSpec"/>
+      </eAnnotations>
+      <packagedElement xmi:type="uml:Class" xmi:id="_JA9jAIpdEdmXGqkFN4PwvA" name="Person">
+        <eAnnotations xmi:id="_JA9jAYpdEdmXGqkFN4PwvA" source="http://www.eclipse.org/uml2/2.0.0/UML">
+          <details xmi:id="_JA9jAopdEdmXGqkFN4PwvA" key="entity"/>
+        </eAnnotations>
+        <ownedAttribute xmi:id="_JA9jA4pdEdmXGqkFN4PwvA" name="Id" visibility="private">
+          <eAnnotations xmi:id="_JA9jBIpdEdmXGqkFN4PwvA" source="http://www.eclipse.org/uml2/2.0.0/UML">
+            <details xmi:id="_JA9jBYpdEdmXGqkFN4PwvA" key="key"/>
+          </eAnnotations>
+          <type xmi:type="uml:PrimitiveType" href="pathmap://UML_LIBRARIES/UMLPrimitiveTypes.library.uml#String"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:id="_JA9jBopdEdmXGqkFN4PwvA" name="Email" visibility="private">
+          <type xmi:type="uml:PrimitiveType" href="pathmap://UML_LIBRARIES/UMLPrimitiveTypes.library.uml#String"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:id="_JA9jB4pdEdmXGqkFN4PwvA" name="Name" visibility="private">
+          <type xmi:type="uml:PrimitiveType" href="pathmap://UML_LIBRARIES/UMLPrimitiveTypes.library.uml#String"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:id="_JA9jCIpdEdmXGqkFN4PwvA" name="Role" visibility="private">
+          <type xmi:type="uml:PrimitiveType" href="pathmap://UML_LIBRARIES/UMLPrimitiveTypes.library.uml#String"/>
+        </ownedAttribute>
+      </packagedElement>
+      <packagedElement xmi:type="uml:Interface" xmi:id="_JA9jCYpdEdmXGqkFN4PwvA" name="IPersonnelUserService">
+        <ownedOperation xmi:id="_JA9jCopdEdmXGqkFN4PwvA" name="addUser">
+          <ownedParameter xmi:id="_JA9jC4pdEdmXGqkFN4PwvA" name="ReturnResult" direction="return"/>
+          <ownedParameter xmi:id="_JA9jDIpdEdmXGqkFN4PwvA" name="id" type="_JA9jO4pdEdmXGqkFN4PwvA"/>
+          <ownedParameter xmi:id="_JA9jDYpdEdmXGqkFN4PwvA" name="name" type="_JA9jO4pdEdmXGqkFN4PwvA"/>
+          <ownedParameter xmi:id="_JA9jDopdEdmXGqkFN4PwvA" name="role" type="_JA9jO4pdEdmXGqkFN4PwvA"/>
+          <ownedParameter xmi:id="_JA9jD4pdEdmXGqkFN4PwvA" name="email" type="_JA9jO4pdEdmXGqkFN4PwvA"/>
+        </ownedOperation>
+        <ownedOperation xmi:id="_JA9jEIpdEdmXGqkFN4PwvA" name="removeUser">
+          <ownedParameter xmi:id="_JA9jEYpdEdmXGqkFN4PwvA" name="ReturnResult" direction="return"/>
+          <ownedParameter xmi:id="_JA9jEopdEdmXGqkFN4PwvA" name="id">
+            <type xmi:type="uml:PrimitiveType" href="pathmap://UML_LIBRARIES/UMLPrimitiveTypes.library.uml#String"/>
+          </ownedParameter>
+        </ownedOperation>
+        <ownedOperation xmi:id="_JA9jE4pdEdmXGqkFN4PwvA" name="findUser">
+          <ownedParameter xmi:id="_JA9jFIpdEdmXGqkFN4PwvA" name="ReturnResult" type="_JA9jAIpdEdmXGqkFN4PwvA" direction="return"/>
+          <ownedParameter xmi:id="_JA9jFYpdEdmXGqkFN4PwvA" name="id">
+            <type xmi:type="uml:PrimitiveType" href="pathmap://UML_LIBRARIES/UMLPrimitiveTypes.library.uml#String"/>
+          </ownedParameter>
+        </ownedOperation>
+        <ownedOperation xmi:id="_JA9jFopdEdmXGqkFN4PwvA" name="listUsers">
+          <ownedParameter xmi:id="_JA9jF4pdEdmXGqkFN4PwvA" name="ReturnResult" type="_JA9jOopdEdmXGqkFN4PwvA" direction="return"/>
+        </ownedOperation>
+        <ownedOperation xmi:id="_JA9jGIpdEdmXGqkFN4PwvA" name="populateUsers">
+          <ownedParameter xmi:id="_JA9jGYpdEdmXGqkFN4PwvA" name="ReturnResult" direction="return"/>
+        </ownedOperation>
+        <ownedOperation xmi:id="_JA9jGopdEdmXGqkFN4PwvA" name="clearUsers">
+          <ownedParameter xmi:id="_JA9jG4pdEdmXGqkFN4PwvA" name="ReturnResult" direction="return"/>
+        </ownedOperation>
+      </packagedElement>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Dependency" xmi:id="_JA9jHIpdEdmXGqkFN4PwvA" supplier="_JA9jOYpdEdmXGqkFN4PwvA" client="_JA9i3YpdEdmXGqkFN4PwvA"/>
+  </packagedElement>
+  <packagedElement xmi:type="uml:Package" xmi:id="_JA9jHYpdEdmXGqkFN4PwvA" name="Component Model" clientDependency="_JA9jOIpdEdmXGqkFN4PwvA">
+    <packagedElement xmi:type="uml:Component" xmi:id="_JA9jHopdEdmXGqkFN4PwvA" name="PersonnelService" clientDependency="_JA9jI4pdEdmXGqkFN4PwvA">
+      <eAnnotations xmi:id="_JA9jH4pdEdmXGqkFN4PwvA" source="http://www.eclipse.org/uml2/2.0.0/UML">
+        <details xmi:id="_JA9jIIpdEdmXGqkFN4PwvA" key="BusinessService"/>
+      </eAnnotations>
+      <eAnnotations xmi:id="_JA9jIYpdEdmXGqkFN4PwvA" source="keywords">
+        <details xmi:id="_JA9jIopdEdmXGqkFN4PwvA" key="MyService"/>
+      </eAnnotations>
+      <interfaceRealization xmi:id="_JA9jI4pdEdmXGqkFN4PwvA" supplier="_JA9i4YpdEdmXGqkFN4PwvA" client="_JA9jHopdEdmXGqkFN4PwvA" contract="_JA9i4YpdEdmXGqkFN4PwvA">
+        <mapping xmi:id="_JA9jJIpdEdmXGqkFN4PwvA"/>
+      </interfaceRealization>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Component" xmi:id="_JA9jJYpdEdmXGqkFN4PwvA" name="PersonnelTool" clientDependency="_JA9jNopdEdmXGqkFN4PwvA _JA9jN4pdEdmXGqkFN4PwvA">
+      <eAnnotations xmi:id="_JA9jJopdEdmXGqkFN4PwvA" source="http://www.eclipse.org/uml2/2.0.0/UML">
+        <details xmi:id="_JA9jJ4pdEdmXGqkFN4PwvA" key="Tool"/>
+      </eAnnotations>
+      <ownedAttribute xmi:id="_JA9jKIpdEdmXGqkFN4PwvA" name="ui" visibility="private" type="_JA9jMIpdEdmXGqkFN4PwvA" aggregation="composite"/>
+      <ownedAttribute xmi:id="_JA9jKYpdEdmXGqkFN4PwvA" name="us" visibility="private" type="_JA9jKopdEdmXGqkFN4PwvA" aggregation="composite"/>
+      <ownedAttribute xmi:id="_0FhOgAS5EdqgvbPRA7p8Mw" name="JONs_PROPERTY" type="_JA9i9IpdEdmXGqkFN4PwvA"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Component" xmi:id="_JA9jKopdEdmXGqkFN4PwvA" name="PersonnelToolUS" clientDependency="_JA9jNIpdEdmXGqkFN4PwvA _JA9jLYpdEdmXGqkFN4PwvA">
+      <eAnnotations xmi:id="_JA9jK4pdEdmXGqkFN4PwvA" source="http://www.eclipse.org/uml2/2.0.0/UML">
+        <details xmi:id="_JA9jLIpdEdmXGqkFN4PwvA" key="UserService"/>
+      </eAnnotations>
+      <ownedAttribute xmi:type="uml:Port" xmi:id="_JA9jL4pdEdmXGqkFN4PwvA" name="Port"/>
+      <interfaceRealization xmi:id="_JA9jLYpdEdmXGqkFN4PwvA" supplier="_JA9jCYpdEdmXGqkFN4PwvA" client="_JA9jKopdEdmXGqkFN4PwvA" contract="_JA9jCYpdEdmXGqkFN4PwvA">
+        <mapping xmi:id="_JA9jLopdEdmXGqkFN4PwvA"/>
+      </interfaceRealization>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Component" xmi:id="_JA9jMIpdEdmXGqkFN4PwvA" name="PersonnelToolUI" clientDependency="_JA9jNYpdEdmXGqkFN4PwvA">
+      <eAnnotations xmi:id="_JA9jMYpdEdmXGqkFN4PwvA" source="http://www.eclipse.org/uml2/2.0.0/UML">
+        <details xmi:id="_JA9jMopdEdmXGqkFN4PwvA" key="UserInterface"/>
+      </eAnnotations>
+      <ownedAttribute xmi:type="uml:Port" xmi:id="_JA9jM4pdEdmXGqkFN4PwvA" name="Port"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Usage" xmi:id="_JA9jNIpdEdmXGqkFN4PwvA" supplier="_JA9i4YpdEdmXGqkFN4PwvA" client="_JA9jKopdEdmXGqkFN4PwvA"/>
+    <packagedElement xmi:type="uml:Usage" xmi:id="_JA9jNYpdEdmXGqkFN4PwvA" supplier="_JA9jCYpdEdmXGqkFN4PwvA" client="_JA9jMIpdEdmXGqkFN4PwvA"/>
+    <packagedElement xmi:type="uml:Usage" xmi:id="_JA9jNopdEdmXGqkFN4PwvA" supplier="_JA9i4YpdEdmXGqkFN4PwvA" client="_JA9jJYpdEdmXGqkFN4PwvA"/>
+    <packagedElement xmi:type="uml:Usage" xmi:id="_JA9jN4pdEdmXGqkFN4PwvA" supplier="_JA9i4YpdEdmXGqkFN4PwvA" client="_JA9jJYpdEdmXGqkFN4PwvA"/>
+    <packagedElement xmi:type="uml:Dependency" xmi:id="_JA9jOIpdEdmXGqkFN4PwvA" supplier="_JA9i3YpdEdmXGqkFN4PwvA" client="_JA9jHYpdEdmXGqkFN4PwvA"/>
+  </packagedElement>
+  <packagedElement xmi:type="uml:Package" xmi:id="_JA9jOYpdEdmXGqkFN4PwvA" name="Type Library">
+    <packagedElement xmi:type="uml:Class" xmi:id="_JA9jOopdEdmXGqkFN4PwvA" name="Collection"/>
+    <packagedElement xmi:type="uml:PrimitiveType" xmi:id="_JA9jO4pdEdmXGqkFN4PwvA" name="String"/>
+  </packagedElement>
+  <profileApplication xmi:id="_JA9i04pdEdmXGqkFN4PwvA">
+    <eAnnotations xmi:id="_JA9i1IpdEdmXGqkFN4PwvA" source="http://www.eclipse.org/uml2/2.0.0/UML">
+      <references xmi:type="ecore:EPackage" href="pathmap://UML_PROFILES/Standard.profile.uml#__LeIQK86Edih9-GG5afQ0g"/>
+    </eAnnotations>
+    <appliedProfile href="pathmap://UML_PROFILES/Standard.profile.uml#_0"/>
+  </profileApplication>
+  <profileApplication xmi:id="_JA9i1opdEdmXGqkFN4PwvA">
+    <eAnnotations xmi:id="_JA9i14pdEdmXGqkFN4PwvA" source="http://www.eclipse.org/uml2/2.0.0/UML">
+      <references xmi:type="ecore:EPackage" href="pathmap://UML_PROFILES/Standard.profile.uml#_JtpGgK87Edih9-GG5afQ0g"/>
+    </eAnnotations>
+    <appliedProfile href="pathmap://UML_PROFILES/Standard.profile.uml#_0"/>
+  </profileApplication>
+  <profileApplication xmi:id="_JA9i2YpdEdmXGqkFN4PwvA">
+    <eAnnotations xmi:id="_JA9i2opdEdmXGqkFN4PwvA" source="http://www.eclipse.org/uml2/2.0.0/UML">
+      <references xmi:type="ecore:EPackage" href="pathmap://UML_PROFILES/Standard.profile.uml#_QHin0K87Edih9-GG5afQ0g"/>
+    </eAnnotations>
+    <appliedProfile href="pathmap://UML_PROFILES/Standard.profile.uml#_0"/>
+  </profileApplication>
+</uml:Model>

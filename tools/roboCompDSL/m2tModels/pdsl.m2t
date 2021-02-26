@@ -1,0 +1,118 @@
+/**
+ * transformation pdsl
+ * date: 14/9/2011
+ * author: J. Adrián Romero Garcés
+ * description: PDSL to PCONF transformation
+ */
+
+texttransformation pdsl (in mdl:"http://robocompdsl/1.0") {
+
+  var editor:Boolean = true;
+  var fpath:String;
+  var file_pconf:String;
+  var tabular:String = '\t';
+  var file_pconf:String;
+  var gen_pdsl:Boolean = true; //esta variable indica si se va a generar código o no
+  
+  mdl.PComponent::main (){
+	if(editor == false){
+   		fpath = java("Entorno","getEnv","EJEMPLOS_DSL", "/home/adri/eclipseworkspace/dsl/bin");
+	}else{
+    	fpath = getenv("OUTPUT_PATH");
+    	var gen:String = getenv("PDSLGEN");
+    	if(gen!=null && gen.equalsIgnoreCase("n")==true){
+    		gen_pdsl = false;
+    	}
+	}
+
+	if(gen_pdsl==true){
+		//el nombre del fichero de salida lo cojo del nombre del componente en el fichero .pdsl
+		if(editor == false){
+	   		file_pconf = self.name.replace("Comp", "");
+	   		file_pconf = file_pconf + ".pdsl";
+		}else{
+	    	file_pconf = getenv("FILE_NAME");
+		}
+	  
+		
+		file(fpath + "/" + file_pconf.replace(".pdsl", ".pconf"));
+	  	//import the cdsl
+	  	self.createHead();
+	  	//generate params
+	  	self.params->forEach(p:mdl.Param){
+	  		p.createParams();
+	  	}
+	  	//generate lists
+	  	self.listparams->forEach(l:mdl.ListParams){
+	  		l.createListParams(tabular);
+	  	}
+	  	self.createFoot();
+	}
+  }
+   
+  //imports. Sólo debería de haber un import -> restringir en el metamodelo!!!!!!!
+  mdl.Import::createImports(){
+    file_pconf = self.importURI.replace("cdsl", "pconf");
+        //fichero de salida
+	file(fpath + "/" + file_pconf);
+	'import "'self.importURI'";\n'
+	var import_pdsl:String = self.importURI.replace("cdsl", "pdsl");
+	'import "'import_pdsl'";\n'
+  }
+  
+  //head 
+  mdl.PComponent::createHead(){
+    //generate imports
+  	/*self.imports->forEach(im:mdl.Import){
+  		im.createImports();	
+  	}*/
+  	'import "'file_pconf'";\n'
+  	'ConfigFile ' self.name '{\n'
+  }
+  
+  //params
+  mdl.Param::createParams(){
+    if(self.paramtypes.oclIsTypeOf(mdl.PString) == true){
+    	'\t' self.name ' = "' self.paramtypes._getFeature("defaultvalue") '"\n'
+    }else{
+  		'\t' self.name ' = ' self.paramtypes._getFeature("defaultvalue") '\n'
+    }
+  }
+  
+  
+  mdl.ListParams::crearListElem(n:Integer, t:String){
+  	t'List ' self.name'['n']{\n'
+		self.params->forEach(p:mdl.Param){
+		  	if(p.paramtypes.oclIsTypeOf(mdl.PString) == true){
+		  	  	t'\t'p.name ' = "' p.paramtypes._getFeature("defaultvalue") '"\n'
+		  	}else{
+				t'\t'p.name ' = ' p.paramtypes._getFeature("defaultvalue") '\n'
+		  	}	
+		}
+		self.listparams->forEach(lp:mdl.ListParams){
+			lp.createListParams(t + '\t')
+		}
+	t'}\n'
+  }
+  
+  //listparams
+  mdl.ListParams::createListParams(t:String){
+  	var pcomp:mdl.PComponent = self._getContainer();
+  	var num_elems:Integer = 0;
+  	pcomp.params->forEach(param:mdl.Param){
+  		if(param.name.contains("num") == true && param.name.equals("num"+self.name)){
+  			num_elems = param.paramtypes._getFeature("defaultvalue");
+  		}
+  	}
+  	//crear todos los elementos de esa lista
+  	var cont:Integer = 0;
+  	while(cont < num_elems){
+  		self.crearListElem(cont, t);
+  		cont = cont + 1;
+  	}
+  }
+  
+  mdl.PComponent::createFoot(){
+  	'}'
+  }
+}

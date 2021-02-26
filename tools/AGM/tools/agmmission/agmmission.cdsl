@@ -1,0 +1,19 @@
+import "AGMExecutive.idsl";
+import "AGMCommonBehavior.idsl";
+import "AGMWorldModel.idsl";
+import "AGMExecutiveTopic.idsl";
+import "AGMExecutiveVisualizationTopic.idsl";
+
+Component agmmission
+{
+	Communications
+	{
+		requires AGMExecutive;
+		implements AGMCommonBehavior;
+		subscribesTo AGMExecutiveTopic, AGMExecutiveVisualizationTopic;
+	};
+
+	language Cpp;
+
+	gui Qt(QWidget);
+};

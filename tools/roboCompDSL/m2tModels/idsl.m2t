@@ -1,0 +1,449 @@
+/**
+ * transformation idsl
+ * date: 20/5/2011
+ * author: Adrian Romero
+ * description: IDSL to text transformation
+ */
+
+texttransformation idl (in mdl:"http://robocompdsl/1.0") {
+
+  var editor:Boolean = true;
+
+  mdl.Interfaces::main () {
+    var env:String;
+    if(editor == false){
+    	//env = java("Entorno","getEnv","SLICE_PATH", "/home/adri/eclipseworkspace/dsl/bin");
+    	env = java("Entorno","getEnv","ROBOCOMP", "/home/adri/eclipseworkspace/dsl/bin");
+    }else{	
+    	//env = java("Entorno","getEnv","SLICE_PATH", getenv("JAVADSL"));
+    	env = java("Entorno","getEnv","ROBOCOMP", getenv("JAVADSL"));
+    }
+    env = env + "/interfaces";
+    //env = env + "/Interfaces";
+	var nameFile:String = self.name.replace("RoboComp", "");
+	file(env +"/"+ nameFile + ".ice");	
+	
+    self.crearModulo();
+    self.crearDatosExcepciones();
+    self.interfaces->forEach(inter:mdl.Interfaz)
+    {
+     	inter.crearFicherosIdl();
+    }
+    self.finModulo(); 
+  }
+  
+  mdl.DataType::tipoParametroRet()
+  {
+	if(self.oclIsTypeOf(mdl.Int))
+	{
+		'int'
+	}
+	else if(self.oclIsTypeOf(mdl.Bool))
+	{
+		'bool'
+	}
+	else if(self.oclIsTypeOf(mdl.Long))
+	{
+		'long'
+	}
+	else if(self.oclIsTypeOf(mdl.Byte))
+	{
+		'byte'
+	}
+	else if(self.oclIsTypeOf(mdl.Double))
+	{
+		'double'
+	}
+	else if(self.oclIsTypeOf(mdl.Float))
+	{
+		'float'
+	}
+	else if(self.oclIsTypeOf(mdl.Short))
+	{
+		'short'
+	}
+	else if(self.oclIsTypeOf(mdl.TString))
+	{
+		'string'
+	}
+	else if(self.oclIsTypeOf(mdl.Complex))
+	{
+	  	print(self._getFeature("complextype").name);
+	}
+	else if(self.oclIsTypeOf(mdl.RefData)){
+		var ret:String = self._getFeature("interfaces").name + "::" + self._getFeature("refComplex").name;
+		print(ret); 
+	}
+	else
+	{
+		self.id
+	}
+  }   
+  
+  mdl.ComplexType::tiposDeDatosEnInterfaz()
+  {
+
+	if(self.oclIsTypeOf(mdl.Sequence))
+	{
+	  	if(self._getFeature("type").oclIsTypeOf(mdl.Int)){
+'\tsequence <int> 'self.name';
+'
+	  	}
+		if(self._getFeature("type").oclIsTypeOf(mdl.Bool)){
+'\tsequence <bool> 'self.name';
+'
+		}
+		if(self._getFeature("type").oclIsTypeOf(mdl.Byte)){
+'\tsequence <byte> 'self.name';
+'
+		}				  
+		if(self._getFeature("type").oclIsTypeOf(mdl.Double)){
+'\tsequence <double> 'self.name';
+'
+		}
+		if(self._getFeature("type").oclIsTypeOf(mdl.Float)){
+'\tsequence <float> 'self.name';
+			'
+		}
+		if(self._getFeature("type").oclIsTypeOf(mdl.Long)){
+'\tsequence <long> 'self.name';
+'
+		}
+		if(self._getFeature("type").oclIsTypeOf(mdl.Short)){
+'\tsequence <short> 'self.name';
+'
+		}	
+		if(self._getFeature("type").oclIsTypeOf(mdl.TString)){
+'\tsequence <string> 'self.name';
+'
+		}
+		if(self._getFeature("type").oclIsTypeOf(mdl.Complex)){	
+		    var val:String = self._getFeature("type")._getFeature("complextype").name;	  
+			if(self._getFeature("type")._getFeature("complextype").oclIsTypeOf(mdl.Struct)){
+'\tsequence <'val'> 'self.name';
+'
+			}
+			if(self._getFeature("type")._getFeature("complextype").oclIsTypeOf(mdl.Enum)){
+'\tsequence <'val'> 'self.name';
+'
+			}
+			if(self._getFeature("type")._getFeature("complextype").oclIsTypeOf(mdl.TDictionary)){
+'\tsequence <'val'> 'self.name';
+'
+			}
+			if(self._getFeature("type")._getFeature("complextype").oclIsTypeOf(mdl.Sequence)){
+'\tsequence <'val'> 'self.name';
+'
+			}
+		}
+			
+	}
+	if(self.oclIsTypeOf(mdl.Struct))
+	{
+'\t["cpp:comparable"]\n'
+'\tstruct ' self._getFeature("name") '{
+'
+		self._getFeature("vars")->forEach(ref:mdl.Complex){ 
+'\t\t'ref.complextype.name' ' ref.id';
+'
+	  	}
+	  	self._getFeature("vars")->forEach(val:mdl.Int)
+		{
+'\t\tint ' val.id';
+'
+		}
+		self._getFeature("vars")->forEach(val:mdl.Bool)
+		{
+'\t\tbool 'val.id';
+'
+		}
+		self._getFeature("vars")->forEach(val:mdl.Byte)
+		{
+'\t\tbyte 'val.id';
+'
+		}				  
+		self._getFeature("vars")->forEach(val:mdl.Double)
+		{
+'\t\tdouble 'val.id';
+'
+		}
+		self._getFeature("vars")->forEach(val:mdl.Float)
+		{
+'\t\tfloat 'val.id';
+			'
+		}
+		self._getFeature("vars")->forEach(val:mdl.Long)
+		{
+'\t\tlong 'val.id';
+'
+		}
+		self._getFeature("vars")->forEach(val:mdl.Short)
+		{
+'\t\tshort 'val.id';
+'
+		}
+		self._getFeature("vars")->forEach(val:mdl.TString)
+		{
+'\t\tstring 'val.id';
+'
+		}
+		self._getFeature("vars")->forEach(val:mdl.RefData)
+		{
+'\t\t'val._getFeature("interfaces").name '::' val._getFeature("refComplex").name ' ' val.id';
+'
+		}
+'\t};
+'	
+	}
+	
+	//Tipo diccionario
+	
+	if(self.oclIsTypeOf(mdl.TDictionary))
+	{
+		'\tdictionary<'
+		if(self._getFeature("clave").oclIsTypeOf(mdl.Int)){
+'int, '
+	  	}
+		else if(self._getFeature("clave").oclIsTypeOf(mdl.Bool)){
+'bool, '
+		}
+		else if(self._getFeature("clave").oclIsTypeOf(mdl.Byte)){
+'byte, '
+		}				  
+		else if(self._getFeature("clave").oclIsTypeOf(mdl.Double)){
+'double, '
+		}
+		else if(self._getFeature("clave").oclIsTypeOf(mdl.Float)){
+'float, '
+		}
+		else if(self._getFeature("clave").oclIsTypeOf(mdl.Long)){
+'long, '
+		}
+		else if(self._getFeature("clave").oclIsTypeOf(mdl.Short)){
+'short, '
+		}	
+		else if(self._getFeature("clave").oclIsTypeOf(mdl.TString)){
+'string, '
+		}
+		else if(self._getFeature("clave").oclIsTypeOf(mdl.Complex)){
+		  var key:String = self._getFeature("clave")._getFeature("complextype").name;
+key', ' 
+		}
+		else if(self._getFeature("clave").oclIsTypeOf(mdl.RefData)){
+		  var key:String = self._getFeature("clave")._getFeature("interfaces").name + "::" + self._getFeature("clave")._getFeature("refComplex").name;
+key', ' 
+		}
+		if(self._getFeature("valor").oclIsTypeOf(mdl.Int)){
+' int>'
+	  	}
+		else if(self._getFeature("valor").oclIsTypeOf(mdl.Bool)){
+'bool>'
+		}
+		else if(self._getFeature("valor").oclIsTypeOf(mdl.Byte)){
+'byte>'
+		}				  
+		else if(self._getFeature("valor").oclIsTypeOf(mdl.Double)){
+'double>'
+		}
+		else if(self._getFeature("valor").oclIsTypeOf(mdl.Float)){
+'float>'
+		}
+		else if(self._getFeature("valor").oclIsTypeOf(mdl.Long)){
+'long>'
+		}
+		else if(self._getFeature("valor").oclIsTypeOf(mdl.Short)){
+'short>'
+		}	
+		else if(self._getFeature("valor").oclIsTypeOf(mdl.TString)){
+'string>'
+		}
+		else if(self._getFeature("valor").oclIsTypeOf(mdl.Complex)){
+		  	var value:String = self._getFeature("valor")._getFeature("complextype").name;
+value'>' 
+		}
+		else if(self._getFeature("valor").oclIsTypeOf(mdl.RefData)){
+		  	var value:String = self._getFeature("valor")._getFeature("interfaces").name + "::" + self._getFeature("valor")._getFeature("refComplex").name;
+value'>' 
+		}
+self.name';
+'
+			
+	}
+	
+	//Tipo enumerado
+	
+	if(self.oclIsTypeOf(mdl.Enum))
+	{
+'\tenum ' self._getFeature("name") '{'
+		var str:Integer = 0;
+		self._getFeature("vars")->forEach(ref:mdl.SymbolicConstant){
+ 			if(str==0){
+ref.name
+ 			}else{
+', 'ref.name 				
+ 			}
+ 			str = str+1;
+	  	}
+'};
+'	  	
+		
+     }
+  }
+  
+  mdl.Interfaces::crearDatosExcepciones(){
+  	//definicion de excepciones
+	self.exceptions->forEach(exp:mdl.Exception)
+	{
+'\texception 'exp.name'{' 
+		//considerar todos los tipos basicos y compuestos!! ------------------------------------------------------------------
+		exp.vars->forEach(str:mdl.TString)
+		{
+	'string ' str.id ';'			
+		}		
+'};
+' 		
+	}	
+		
+	//definicion de tipos compuestos y constantes!-----------------------------------------------------------------------------
+	self.complextypes->forEach(data:mdl.ComplexType)
+	{
+		data.tiposDeDatosEnInterfaz();
+	}
+	
+	//referencias a tipos de otras interfaces
+	self.refsData->forEach(ref:mdl.RefData)
+	{
+		'\t' ref.interfaces.name '::' ref.refComplex.name ' ' ref.id ';';
+	}
+  }
+  
+  mdl.Interfaces::crearModulo()
+  {
+    var name:String = self.name.replace("RoboComp", "");
+'//******************************************************************
+// 
+//  Generated by IDSL to IDL Translator
+//  
+//  File name: 'name'.idl
+//  Source: 'name'.idsl
+//  
+//******************************************************************   
+#ifndef 'self.name.toUpper()'_ICE
+#define 'self.name.toUpper()'_ICE
+
+'
+	//dependencias con otros ficheros ice
+	self.imports->forEach(uri:mdl.Import)
+	{
+		var uriStr:String = uri.importURI;
+		uriStr = uriStr.replace(".idsl", ".ice");	  
+'#include <'uriStr'>
+
+'		
+	}
+'module ' self.name
+'{
+'
+  }
+  
+  mdl.Interfaces::finModulo()
+  {
+'
+};
+  
+#endif'
+  }
+  
+  mdl.Interfaz::crearFicherosIdl()
+   {
+	//denifir la interfaz
+'
+\tinterface 'self.name '{'	
+	//operaciones
+	self.operaciones->forEach(op:mdl.operacion)
+	{
+	  	
+	  	//devuelve un dato a través de un tipo definido en este idl
+		if(op._getFeature("return")!= null)
+		{
+		    if(op.idempotent)
+				'\n\t\tidempotent '	  	  
+	  		else
+	  			print("\n\t\t");
+			op._getFeature("return").type.tipoParametroRet();
+		}
+		else
+		{
+		  if(op.idempotent)
+				'\n\t\tidempotent '	
+'\n\t\tvoid '
+		}
+		
+		//nombre de la función
+		' 'op.name
+		'('
+		
+		//parametros
+		//--Datos
+		var cont:Integer = -1;
+		var num_params:Integer = op.iparams.size() + op.oparams.size();
+		op.iparams->forEach(ip:mdl.iparam)
+		{
+		  	if(ip.type.oclIsTypeOf(mdl.RefData))
+		  	    ip.type._getFeature("interfaces").name '::' ip.type._getFeature("refComplex").name ' ' ip.name
+		  	else if(ip.type.oclIsTypeOf(mdl.Complex))
+		  		ip.type._getFeature("complextype").name ' ' ip.name
+		  	else
+				ip.type.tipoParametroRet() ' ' ip.name
+			cont = cont + 1;
+			if(cont < num_params-1)
+			{
+				', '
+			}			
+		}
+		op.oparams->forEach(opa:mdl.oparam)
+		{	
+		  	if(opa.type.oclIsTypeOf(mdl.RefData))
+		  		'out ' opa.type._getFeature("interfaces").name '::' opa.type._getFeature("refComplex").name  ' ' opa.name
+		  	else if(opa.type.oclIsTypeOf(mdl.Complex))
+		  		'out ' opa.type._getFeature("complextype").name ' ' opa.name
+		  	else
+				'out 'opa.type.tipoParametroRet() ' ' opa.name
+			cont = cont + 1;
+			if(cont < num_params-1)
+			{
+				', '
+			}
+			
+		}
+		')'
+		//buscar si lanza excepciones
+		var numexc:Integer = 0;
+		op.throws->forEach(exc:mdl.Exception)
+		{
+			if(numexc == 0){
+				'throws 'exc.name
+			}
+			else{
+				', ' exc.name
+			}
+			numexc = numexc + 1
+		}
+		op.refException->forEach(exc:mdl.RefException)
+		{
+			if(numexc == 0){
+				'throws 'exc.interfaces.name'::'exc.exceptions.name
+			}
+			else{
+				', ' exc.interfaces.name'::'exc.exceptions.name
+			}
+			numexc = numexc + 1
+		}
+		
+		';'	
+	}
+'
+\t};'
+      
+  }
+}

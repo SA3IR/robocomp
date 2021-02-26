@@ -1,0 +1,18 @@
+
+module RoboCompCAIHMCEchord{
+
+	interface AgentToHMCComp{
+		void  searchPatientSeated();
+		void  restart();
+		void  processData();
+		void  setPersonID(int personid);
+	};
+	interface HMCCompToAgent{
+		void  patientIsSeated();
+		void  patientIsStanding();
+		void  testIsFinished();
+		void  patientIsFar();
+		void  processDataIsFinished(string result);
+	};
+};
+  

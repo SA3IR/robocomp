@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="ASCII"?>
+<umt.SM:Model xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:umt.SM="http:///SM" xsi:schemaLocation="http:///SM SM.ecore" name="JonsTestModell">
+  <modelElements xsi:type="umt.SM:Class" name="Person">
+    <attributes name="DILLDALL" type="//@modelElements.1"/>
+    <attributes name="firstName" type="//@modelElements.1"/>
+    <attributes name="lastName" type="//@modelElements.1"/>
+    <attributes name="phone" type="//@modelElements.1"/>
+  </modelElements>
+  <modelElements xsi:type="umt.SM:PrimitiveDataType" name="String"/>
+  <modelElements xsi:type="umt.SM:Class" name="Company">
+    <attributes name="companyName" type="//@modelElements.1"/>
+    <attributes name="companyAddress" type="//@modelElements.1"/>
+  </modelElements>
+  <modelElements xsi:type="umt.SM:Class" name="Car">
+    <attributes name="make" type="//@modelElements.1"/>
+  </modelElements>
+</umt.SM:Model>

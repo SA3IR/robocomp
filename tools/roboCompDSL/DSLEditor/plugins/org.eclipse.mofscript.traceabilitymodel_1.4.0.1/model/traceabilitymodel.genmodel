@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<genmodel:GenModel xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    xmlns:genmodel="http://www.eclipse.org/emf/2002/GenModel" copyrightText="&#xD;&#xA;  Copyright (c) 2005, 2006, 2007, 2008 SINTEF&#xD;&#xA;  All rights reserved. This program and the accompanying materials&#xD;&#xA;  are made available under the terms of the Eclipse Public License v1.0&#xD;&#xA;  which accompanies this distribution, and is available at&#xD;&#xA;  http://www.eclipse.org/legal/epl-v10.html&#xD;&#xA;&#xD;&#xA;  Contributors:&#xD;&#xA;     Jon Oldevik, Tor Neple, Gøran Olsen, SINTEF (Norway)&#xD;&#xA;  &#xD;&#xA;     Developed as part of the MODELWARE (http://www.modelware-ist.org/) and &#xD;&#xA;    MODELPLEX (http://www.modelplex-ist.org/) IP projects &#xD;&#xA;&#xD;&#xA;"
+    modelDirectory="/org.eclipse.mofscript.traceabilitymodel/src" editDirectory="/org.eclipse.mofscript.traceabilitymodel.edit/src"
+    editorDirectory="/org.eclipse.mofscript.traceabilitymodel.editor/src" modelPluginID="org.eclipse.mofscript.traceabilitymodel"
+    modelName="Traceabilitymodel" editPluginClass="org.eclipse.mofscript.traceabilitymodel.provider.TraceabilitymodelEditPlugin"
+    editorPluginClass="org.eclipse.mofscript.traceabilitymodel.presentation.TraceabilitymodelEditorPlugin"
+    testSuiteClass="org.eclipse.mofscript.traceabilitymodel.tests.TraceabilitymodelAllTests"
+    importerID="org.eclipse.emf.importer.ecore" complianceLevel="5.0">
+  <foreignModel>traceabilitymodel.ecore</foreignModel>
+  <genPackages prefix="Traceabilitymodel" basePackage="org.eclipse.mofscript" disposableProviderFactory="true"
+      ecorePackage="traceabilitymodel.ecore#/">
+    <genClasses ecoreClass="traceabilitymodel.ecore#//ModelElementRef">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//ModelElementRef/ID"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//ModelElementRef/name"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//ModelElementRef/featureRef"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//ModelElementRef/uri"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference traceabilitymodel.ecore#//ModelElementRef/metaModel"/>
+    </genClasses>
+    <genClasses ecoreClass="traceabilitymodel.ecore#//Trace">
+      <genFeatures notify="false" createChild="false" ecoreFeature="ecore:EReference traceabilitymodel.ecore#//Trace/segment"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//Trace/sourceOperationID"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//Trace/sourceOperationName"/>
+      <genFeatures notify="false" createChild="false" ecoreFeature="ecore:EReference traceabilitymodel.ecore#//Trace/originatinElement"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//Trace/specificationName"/>
+    </genClasses>
+    <genClasses ecoreClass="traceabilitymodel.ecore#//TraceableSegment">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//TraceableSegment/startPos"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//TraceableSegment/endPos"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//TraceableSegment/startLine"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//TraceableSegment/endLine"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//TraceableSegment/startColumn"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//TraceableSegment/endColumn"/>
+    </genClasses>
+    <genClasses ecoreClass="traceabilitymodel.ecore#//Block">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//Block/ID"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//Block/startPos"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//Block/endPos"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//Block/protectedBlock"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference traceabilitymodel.ecore#//Block/traceablesegment"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//Block/startLine"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//Block/startColumn"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//Block/endColumn"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//Block/endLine"/>
+    </genClasses>
+    <genClasses ecoreClass="traceabilitymodel.ecore#//TraceModel">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference traceabilitymodel.ecore#//TraceModel/trace"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference traceabilitymodel.ecore#//TraceModel/files"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference traceabilitymodel.ecore#//TraceModel/modelElementRefs"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference traceabilitymodel.ecore#//TraceModel/metaModels"/>
+    </genClasses>
+    <genClasses ecoreClass="traceabilitymodel.ecore#//File">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference traceabilitymodel.ecore#//File/blocks"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//File/ID"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//File/name"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//File/URI"/>
+    </genClasses>
+    <genClasses ecoreClass="traceabilitymodel.ecore#//MetaModel">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//MetaModel/name"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute traceabilitymodel.ecore#//MetaModel/nsUri"/>
+    </genClasses>
+  </genPackages>
+</genmodel:GenModel>

@@ -1,0 +1,21 @@
+import "ASREchord.idsl";
+module RoboCompCAISpeechEchord
+{
+	
+	interface AgentToSpeechComp
+	{
+		void setTestConfig(RoboCompASREchord::TestConfig config);
+		void setText(string label);
+		void canAnswer(bool timeToAnswer, int questionNumber);
+		void stopSpeaking();
+		void speakLouder();
+		void setVolume(double value);
+		void playSound(); 
+	};
+	interface SpeechCompToAgent
+	{
+		void finishSpeakingEvent(bool finish);
+		void setAnswer(string answer);
+	};
+	
+};

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<genmodel:GenModel xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    xmlns:genmodel="http://www.eclipse.org/emf/2002/GenModel" copyrightText="&#xD;&#xA;  Copyright (c) 2005, 2006, 2007, 2008 SINTEF&#xD;&#xA;  All rights reserved. This program and the accompanying materials&#xD;&#xA;  are made available under the terms of the Eclipse Public License v1.0&#xD;&#xA;  which accompanies this distribution, and is available at&#xD;&#xA;  http://www.eclipse.org/legal/epl-v10.html&#xD;&#xA;&#xD;&#xA;  Contributors:&#xD;&#xA;     Jon Oldevik, Tor Neple, Gøran Olsen, SINTEF (Norway)&#xD;&#xA;  &#xD;&#xA;     Developed as part of the MODELWARE (http://www.modelware-ist.org/) and &#xD;&#xA;    MODELPLEX (http://www.modelplex-ist.org/) IP projects &#xD;&#xA;&#xD;&#xA;"
+    modelDirectory="/org.eclipse.mofscript.fileresourcemodel/src" editDirectory="/org.eclipse.mofscript.fileresourcemodel.edit/src"
+    editorDirectory="/org.eclipse.mofscript.fileresourcemodel.editor/src" modelPluginID="org.eclipse.mofscript.fileresourcemodel"
+    runtimeJar="true" modelName="Frm" editPluginClass="frm.provider.FrmEditPlugin"
+    editorPluginClass="frm.presentation.FrmEditorPlugin" complianceLevel="5.0">
+  <foreignModel>frm.ecore</foreignModel>
+  <genPackages prefix="Frm" basePackage="org.eclipse.mofscript.fileresourcemodel"
+      ecorePackage="frm.ecore#/">
+    <genClasses ecoreClass="frm.ecore#//FileResourcesType">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference frm.ecore#//FileResourcesType/fileResource"/>
+    </genClasses>
+    <genClasses ecoreClass="frm.ecore#//FileResource">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute frm.ecore#//FileResource/name"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute frm.ecore#//FileResource/extension"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute frm.ecore#//FileResource/relativePath"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute frm.ecore#//FileResource/mimeType"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute frm.ecore#//FileResource/content"/>
+    </genClasses>
+  </genPackages>
+</genmodel:GenModel>

@@ -1,0 +1,217 @@
+/*
+  Copyright (c) 2005, 2006, 2007, 2008 SINTEF
+  All rights reserved. This program and the accompanying materials
+  are made available under the terms of the Eclipse Public License v1.0
+  which accompanies this distribution, and is available at
+  http://www.eclipse.org/legal/epl-v10.html
+
+  Contributors:
+     Jon Oldevik, Tor Neple, Gøran Olsen, SINTEF (Norway)
+  
+     Developed as part of the MODELWARE (http://www.modelware-ist.org/) and 
+    MODELPLEX (http://www.modelplex-ist.org/) IP projects 
+*/
+
+/**
+ *
+ * UML2Ecore Transformation
+ * Generates an ecore model from UML2 input 
+ * 
+ */
+texttransformation UML2Ecore (in uml:"http://www.eclipse.org/uml2/2.1.0/UML")
+
+/**
+ * The main rule
+ * Initiates the file output and the rest of the transformation
+ */
+uml.Model::main(){ 
+  file (self.name.toLower() + ".ecore") 
+  self.heading()
+  self.modelPackage()
+}
+
+/**
+ * Generates the heading for the core
+ */
+uml.Model::heading() {
+'<?xml version="1.0" encoding="ISO-8859-1"?>
+<!--
+*********************************************
+   This ECORE model was generated from by a MOFScript transformation.
+   (http://www.modelbased.net/mofscript)
+   MOFScript UML2 to Ecore transformation version 0.1
+   generated: ' date() ' ' time() '
+   author:      Jon Oldevik, SINTEF
+*********************************************
+-->
+'  
+}
+
+/**
+ * Maps the root model to Ecore
+ */
+uml.Model::modelPackage () {
+  property uriPrefix:String = "http://www.modelware.mddi.org/"
+'
+<ecore:EPackage name="'self.name'"  nsURI="' uriPrefix + self.name'" nsPrefix="'self.name'" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xmi="http://www.omg.org/XMI" xmi:version="2.0">'
+  self.ownedMember->forEach(member:uml.Element){
+  	member.uml2ecore()	
+  }
+'
+</ecore:EPackage>
+'
+}
+
+/**
+ * "Abstract" rule - for mapping UML elements to ecore
+ */
+abstract uml.Element::uml2ecore ()
+
+/**
+  * Mapping of packages
+  */
+uml.Package::uml2ecore () {
+'
+  <ecore:EPackage name="'self.name'">
+'
+  self.ownedMember->forEach(member:uml.Element){
+  	member.uml2ecore()
+  }  
+'
+  </ecore:EPackage>
+'
+}
+
+/**
+  * Mapping of classes
+  */
+uml.Class::uml2ecore () {
+  property is_abstract:Boolean = self.isAbstract
+  property superTypes:String = self.getSuperTypesString();
+'
+	<eClassifiers xsi:type="ecore:EClass" name="' self.name '" abstract="'is_abstract'" ' self.getSuperTypesString() '>'
+  	self.ownedAttribute->forEach(attribute:uml.Property) {
+  	  attribute.uml2ecore()
+  	}
+  	self.ownedOperation->forEach(operation:uml.Operation) {
+  	  operation.uml2ecore()
+  	}
+'  
+    </eClassifiers>'
+}
+
+/**
+  * Gets the text for ecore supertypes as a String
+  */
+uml.Class::getSuperTypesString() : String {
+//     eSuperTypes="#//MOFScriptStatementOwner"
+	
+	if (not (self.generalization.isEmpty())){
+		result = "eSuperTypes=\""
+	}
+	
+	self.generalization->forEach(gen:uml.Generalization) {
+	 
+	  gen.target->forEach(tar:uml.Class){	    
+	    result += "#//" + tar.name
+	    if (not (tar = gen.target.last())){
+	    	result += ","
+	    }
+	  }
+	}
+	if (not (self.generalization.isEmpty())){
+		result += "\""
+	}
+}
+
+/**
+  * Mapping of properties (Associations and Attributes)
+  */
+uml.Property::uml2ecore () {  
+  var lower:String = self.lower
+  var upper:String = self.upper
+  var otherEnd:Object
+  var otherEndRef:String = ""
+  if (self.association != null) { // is association end
+    self.association.member->forEach (member:uml.Property) {
+      if (member != self)
+      	otherEnd = member
+    }
+    '	 
+      <eStructuralFeatures xsi:type="ecore:EReference" name="'self.name'" eType="'self.type.getEcoreType()
+    if (lower <> 0){
+      '" lowerBound="'lower'"'
+      ' upperBound="'upper'"'
+    } else {
+      '" upperBound="'upper'"'      
+    }	
+    if (otherEnd.name != "") {
+      // eOpposite="#//MOFScriptStatement/owner"
+      ' eOpposite="#//' self.type.name '/' otherEnd.name '"'
+    } 
+    if (self.aggregation = "composite" or self.aggregation = "shared") {
+      ' containment="true"'
+    }
+    ' />'
+  } else { // is attribute
+    '
+      <eStructuralFeatures xsi:type="ecore:EAttribute" name="'self.name'" eType="ecore:EDataType 'self.type.getEcoreType()'" />'
+  }
+}
+
+/**
+  * Returns an Ecore type with prefix
+  */ 
+uml.Type::getEcoreType (): String {
+  property ecoreTypePrefix:String = "http://www.eclipse.org/emf/2002/Ecore#//"
+  var varType:String = "EString"
+  log ("getEcoreType: " + self.oclGetType() + " name=" + self.name)  
+  if (self.oclIsTypeOf(uml.PrimitiveType)) {
+    if ("Integer".equalsIgnoreCase(self.name) or "EInt".equalsIgnoreCase(self.name)){
+      varType = "EInt"
+    } else if ("String".equalsIgnoreCase(self.name) or "EString".equalsIgnoreCase(self.name)){
+      varType = "EString"
+    } else if ("UnlimitedNatural".equalsIgnoreCase(self.name) or "EDouble".equalsIgnoreCase(self.name)){
+      varType = "EDouble"      
+    } else if ("Boolean".equalsIgnoreCase(self.name) or "EBoolean".equalsIgnoreCase(self.name)){
+      varType = "EBoolean"
+    } else if ("JavaObject".equalsIgnoreCase(self.name) or 
+    	"EJavaObject".equalsIgnoreCase(self.name) or 
+    	"Object".equalsIgnoreCase(self.name)) {
+    	  varType = "EJavaObject"
+    }    
+   else{}
+    result = ecoreTypePrefix + varType;
+  } else {    
+    result = "#//" + self.name
+  }
+}
+
+/**
+ * Maps operations from UML to ecore
+ */
+uml.Operation::uml2ecore () { 
+}
+
+
+/**
+ * Maps associations from UML to Ecore
+ */
+uml.Association::uml2ecore() {
+  // ' <-- uml.Association ' self.name ' --> '
+  log ("uml.Association::uml2ecore - " + self.name)
+}
+
+/**
+ * Maps enumerations from UML 2 ecore
+ */
+uml.Enumeration::uml2ecore() {
+  '
+    <eClassifiers xsi:type="ecore:EEnum" name="' self.name '">'
+    self.ownedLiteral->forEach(lit:uml.EnumerationLiteral) {
+      '
+       <eLiterals name="' lit.name'" value="'count()'"/>'
+    }
+  '
+    </eClassifiers>'   
+}

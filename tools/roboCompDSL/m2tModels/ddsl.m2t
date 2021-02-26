@@ -1,0 +1,87 @@
+/**
+ * transformation ddslToXML
+ * date: 19/9/2011
+ * last modified: 25/04/2013
+ * author: J. Adrián Romero Garcés
+ * description: DDSL to XML transformation
+ */
+
+texttransformation ddslToXML (in mdl:"http://robocompdsl/1.0") {
+
+  var editor:Boolean = true; //modo pruebas/editor
+  var fpath:String; //path donde se crea el el fichero XML
+   
+  mdl.Deployment::main () {
+    if(editor == false){
+   		fpath = java("Entorno","getEnv","EJEMPLOS_DSL", "/home/adri/WorkspacePrueba/DSL/bin");
+    }else{
+      	fpath = getenv("OUTPUT_PATH");
+    }
+    file(fpath + "/"+ self.name + ".xml");//fichero de salida
+    self.inicioManager();
+    self.nodos();
+  	self.finManager();
+  }
+  
+  mdl.Deployment::inicioManager(){
+'<?xml version="1.0" encoding="UTF-8"?>
+
+<managerComp>
+	<generalInformation>
+		<editor path="kedit"/>
+		<timeouts fixed="1000" blink="300"/>
+		<clicks switch="2" interval="400"/>
+		<graph alpha="80" active="true" scale="200"/>
+		<graphTiming idletime="1000" focustime="500" fasttime="10" fastperiod="2000"/>
+		<simulation hookes="0.07" springlength="0.05" friction="0.08" step="0.5" fieldforce="0.002"/>
+	</generalInformation>
+  '
+  }
+  
+  mdl.Deployment::nodos(){
+  	self.components->forEach(comp:mdl.DComponent){
+  		comp.crearNodos();
+  	} 
+  }
+  
+  mdl.Deployment::finManager(){
+'
+</managerComp>
+'  
+  }
+  
+  mdl.DComponent::crearNodos(){
+   //busco el primer servant para poner el endpoint. 
+   //¿Qué pasa si el componente implementa más de una interfaz? 
+   var servant:String;
+   if(self.name.communications!=null && self.name.communications.servants!=null){
+   		servant = self.name.communications.servants.first().name.toLower();
+   }
+   var component_name:String = self.name.name;
+   
+   //si no tiene servants voy a coger el nombre del componente
+   //¿Mejor coger el commonbehaviour?. 
+   if(servant.equalsIgnoreCase("")==true){ 
+	   	var caux_name:String = component_name.toLower();
+	   	var last_i:Integer = caux_name.lastIndexOf("comp");
+	   //	'-' last_i '\n'
+	   	servant = caux_name.substring(0, last_i);
+   }
+'
+	<node alias="'component_name.toLower()'" endpoint="'servant': tcp -h 'self.ip' -p 'self.port'">
+		<workingDir path="'self.path'"/>
+'
+		self.dependences->forEach(dep:mdl.RComponent){
+'		<dependence alias="'dep.name.toLower()'"/>
+'		
+		}
+'		<upCommand command="'self.path'/bin/'component_name.toLower()' --Ice.Config='self.path'/etc/generic_config, 'self.path'/etc/specific_config"/>
+		<downCommand command="'self.path'/bin/stop'component_name'.sh"/>
+		<configFile path="'self.config'"/>
+		<xpos value="-0.709810892551"/>
+		<ypos value="0.937138095399"/>
+		<radius value="10.0"/>
+	</node>
+'  	
+  }
+}

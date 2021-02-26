@@ -1,0 +1,14 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: File Resource Model
+Bundle-SymbolicName: org.eclipse.mofscript.fileresourcemodel; singleton:=true
+Bundle-Version: 1.4.0.1
+Bundle-ClassPath: org.eclipse.mofscript.fileresourcemodel.jar
+Bundle-Vendor: SINTEF
+Bundle-Localization: plugin
+Export-Package: org.eclipse.mofscript.fileresourcemodel.frm,
+ org.eclipse.mofscript.fileresourcemodel.frm.impl,
+ org.eclipse.mofscript.fileresourcemodel.frm.util
+Require-Bundle: org.eclipse.core.runtime,
+ org.eclipse.emf.ecore;visibility:=reexport
+Bundle-ActivationPolicy: lazy

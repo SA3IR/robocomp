@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<uml:Model xmi:version="2.1" xmlns:xmi="http://schema.omg.org/spec/XMI/2.1" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" xmlns:uml="http://www.eclipse.org/uml2/2.0.0/UML" xmi:id="_EdviIUODEdmbut8u6EnmLw" name="Model2Text-Example">
+  <eAnnotations xmi:id="_EdviPEODEdmbut8u6EnmLw" source="http://www.eclipse.org/uml2/2.0.0/UML"/>
+  <packageImport xmi:id="_EdviTEODEdmbut8u6EnmLw">
+    <importedPackage xmi:type="uml:Model" href="pathmap://UML_LIBRARIES/UMLPrimitiveTypes.library.uml#_0"/>
+  </packageImport>
+  <packagedElement xmi:type="uml:Package" xmi:id="_EdviTUODEdmbut8u6EnmLw" name="InsuranceServices">
+    <packagedElement xmi:type="uml:Interface" xmi:id="_EdvihEODEdmbut8u6EnmLw" name="InsuranceServices">
+      <ownedOperation xmi:id="_EdvihUODEdmbut8u6EnmLw" name="checkInsurance"/>
+      <ownedOperation xmi:id="_EdvihkODEdmbut8u6EnmLw" name="createInsurance"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Interface" xmi:id="_Edvih0ODEdmbut8u6EnmLw" name="InsuranceManagement">
+      <ownedOperation xmi:id="_EdviiEODEdmbut8u6EnmLw" name="getCustomers"/>
+    </packagedElement>
+  </packagedElement>
+  <packagedElement xmi:type="uml:Package" xmi:id="_EdviiUODEdmbut8u6EnmLw" name="EnsuranceEntities">
+    <packagedElement xmi:type="uml:Class" xmi:id="_Ed1pMkODEdmbut8u6EnmLw" name="Car">
+      <ownedAttribute xmi:id="_Ed1pM0ODEdmbut8u6EnmLw" name="brand" visibility="private">
+        <type xmi:type="uml:PrimitiveType" href="pathmap://UML_LIBRARIES/UMLPrimitiveTypes.library.uml#String"/>
+      </ownedAttribute>
+      <ownedAttribute xmi:id="_Ed1pNEODEdmbut8u6EnmLw" name="owner" visibility="private" type="_Ed1pNkODEdmbut8u6EnmLw" association="_Ed1pPUODEdmbut8u6EnmLw"/>
+      <ownedAttribute xmi:id="_Ed1pNUODEdmbut8u6EnmLw" name="insurance" visibility="private" type="_Ed1pPkODEdmbut8u6EnmLw" association="_Ed1pRUODEdmbut8u6EnmLw"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Class" xmi:id="_Ed1pNkODEdmbut8u6EnmLw" name="Person">
+      <ownedAttribute xmi:id="_Ed1pN0ODEdmbut8u6EnmLw" name="lastName" visibility="private">
+        <type xmi:type="uml:PrimitiveType" href="pathmap://UML_LIBRARIES/UMLPrimitiveTypes.library.uml#String"/>
+      </ownedAttribute>
+      <ownedAttribute xmi:id="_Ed1pOEODEdmbut8u6EnmLw" name="firstName" visibility="private">
+        <type xmi:type="uml:PrimitiveType" href="pathmap://UML_LIBRARIES/UMLPrimitiveTypes.library.uml#String"/>
+      </ownedAttribute>
+      <ownedAttribute xmi:id="_Ed1pOUODEdmbut8u6EnmLw" name="cars" type="_Ed1pMkODEdmbut8u6EnmLw" association="_Ed1pPUODEdmbut8u6EnmLw">
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_Ed1pOkODEdmbut8u6EnmLw" value="*"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="_Ed1pO0ODEdmbut8u6EnmLw"/>
+      </ownedAttribute>
+      <ownedAttribute xmi:id="_Ed1pPEODEdmbut8u6EnmLw" name="insurance" visibility="private" type="_Ed1pPkODEdmbut8u6EnmLw" association="_Ed1pRkODEdmbut8u6EnmLw"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="_Ed1pPUODEdmbut8u6EnmLw" name="Ownership" memberEnd="_Ed1pNEODEdmbut8u6EnmLw _Ed1pOUODEdmbut8u6EnmLw"/>
+    <packagedElement xmi:type="uml:Class" xmi:id="_Ed1pPkODEdmbut8u6EnmLw" name="Insurance">
+      <ownedAttribute xmi:id="_Ed1pP0ODEdmbut8u6EnmLw" name="type" visibility="private">
+        <type xmi:type="uml:PrimitiveType" href="pathmap://UML_LIBRARIES/UMLPrimitiveTypes.library.uml#String"/>
+      </ownedAttribute>
+      <ownedAttribute xmi:id="_Ed1pQEODEdmbut8u6EnmLw" name="name" visibility="private">
+        <type xmi:type="uml:PrimitiveType" href="pathmap://UML_LIBRARIES/UMLPrimitiveTypes.library.uml#String"/>
+      </ownedAttribute>
+      <ownedAttribute xmi:id="_Ed1pQUODEdmbut8u6EnmLw" name="cars" visibility="private" type="_Ed1pMkODEdmbut8u6EnmLw" association="_Ed1pRUODEdmbut8u6EnmLw">
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_Ed1pQkODEdmbut8u6EnmLw" value="*"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="_Ed1pQ0ODEdmbut8u6EnmLw" value="1"/>
+      </ownedAttribute>
+      <ownedAttribute xmi:id="_Ed1pREODEdmbut8u6EnmLw" name="insuree" visibility="private" type="_Ed1pNkODEdmbut8u6EnmLw" association="_Ed1pRkODEdmbut8u6EnmLw"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="_Ed1pRUODEdmbut8u6EnmLw" name="InsuredCars" memberEnd="_Ed1pNUODEdmbut8u6EnmLw _Ed1pQUODEdmbut8u6EnmLw"/>
+    <packagedElement xmi:type="uml:Association" xmi:id="_Ed1pRkODEdmbut8u6EnmLw" name="InsuranceOwner" memberEnd="_Ed1pREODEdmbut8u6EnmLw _Ed1pPEODEdmbut8u6EnmLw"/>
+  </packagedElement>
+  <profileApplication xmi:id="_EdviPUODEdmbut8u6EnmLw">
+    <eAnnotations xmi:id="_EdviPkODEdmbut8u6EnmLw" source="http://www.eclipse.org/uml2/2.0.0/UML">
+      <references xmi:type="ecore:EPackage" href="pathmap://UML_PROFILES/Standard.profile.uml#__LeIQK86Edih9-GG5afQ0g"/>
+    </eAnnotations>
+    <appliedProfile href="pathmap://UML_PROFILES/Standard.profile.uml#_0"/>
+  </profileApplication>
+  <profileApplication xmi:id="_EdviQEODEdmbut8u6EnmLw">
+    <eAnnotations xmi:id="_EdviQUODEdmbut8u6EnmLw" source="http://www.eclipse.org/uml2/2.0.0/UML">
+      <references xmi:type="ecore:EPackage" href="pathmap://UML_PROFILES/Standard.profile.uml#_JtpGgK87Edih9-GG5afQ0g"/>
+    </eAnnotations>
+    <appliedProfile href="pathmap://UML_PROFILES/Standard.profile.uml#_0"/>
+  </profileApplication>
+  <profileApplication xmi:id="_EdviQ0ODEdmbut8u6EnmLw">
+    <eAnnotations xmi:id="_EdviREODEdmbut8u6EnmLw" source="http://www.eclipse.org/uml2/2.0.0/UML">
+      <references xmi:type="ecore:EPackage" href="pathmap://UML_PROFILES/Standard.profile.uml#_QHin0K87Edih9-GG5afQ0g"/>
+    </eAnnotations>
+    <appliedProfile href="pathmap://UML_PROFILES/Standard.profile.uml#_0"/>
+  </profileApplication>
+</uml:Model>

@@ -1,0 +1,333 @@
+/*
+  Copyright (c) 2005, 2006, 2007, 2008 SINTEF
+  All rights reserved. This program and the accompanying materials
+  are made available under the terms of the Eclipse Public License v1.0
+  which accompanies this distribution, and is available at
+  http://www.eclipse.org/legal/epl-v10.html
+
+  Contributors:
+     Jon Oldevik, Tor Neple, Gøran Olsen, SINTEF (Norway)
+  
+     Developed as part of the MODELWARE (http://www.modelware-ist.org/) and 
+    MODELPLEX (http://www.modelplex-ist.org/) IP projects 
+*/
+/*
+*  Example of Model to Text transformation using the 
+*  "MOF Script" Language
+*  UML 2 Java generation
+*/
+
+import "uml_std.m2t"
+texttransformation UML2Java (in uml:"http://www.eclipse.org/uml2/2.1.0/UML") {
+
+property package_name:String = "org.modelware"
+property package_dir:String = "org/modelware/"
+property ext:String = ".java"
+property author:String = "MOFScript generator 'UML2Java'"
+
+ /**
+ * Main
+ */
+	uml.Model::main () {    
+	  property a1:String="" 
+	  self.ownedMember->forEach(p:uml.Package) {
+	    p.mapPackage()
+	  }
+	}
+  
+  /*
+  * mapPackage 
+  */
+  
+	uml.Package::mapPackage ()  {
+      var pName:String = self.getFullName()	  
+	  //log ("mapPackage:" + self.name)
+	  self.ownedMember->forEach(c:uml.Class)
+	  	c.mapClass(pName)
+	
+	  self.ownedMember->forEach(p:uml.Package) {
+	    p.mapPackage()
+	  }
+	  
+	  self.ownedMember->forEach(interface:uml.Interface) {
+	    interface.interfaceMapping(pName)
+	  }  
+	}
+
+  /* 
+  * mapClass
+  */
+  
+  uml.Class::mapClass(packageName:String) {  
+
+    var pLocation:String = packageName.replace ("\\.", "/")    
+    //log ("stereotype in annotation:" + self.getStereotypeFromAnnotation())
+    //log ("real stereotype: " + self.getAppliedStereotypes())
+//     stdout.println ("Class: " + self.name +  ", fullpackage: " + pName)
+    file (package_dir + pLocation + "/" + self.name + ext)
+    'package ' package_name + "." + packageName ';'
+    self.standardClassImport ()
+    self.standardClassHeaderComment ()
+    
+
+    '
+public class ' self.name ' implements Serializable { '
+	' 	
+	/*
+     * Attributes
+    */
+    '
+    '   
+    private String __id = null;
+	'
+	self.ownedAttribute->forEach(p : uml.Property | p.association = null) {
+		p.classPrivateAttribute()
+	}
+	nl(2)		
+	self.ownedAttribute->forEach(p : uml.Property | p.association != null){
+	    p.classPrivateAssociations()
+	}
+	nl(2)		
+	self.classConstructor()
+	nl(2)
+	'
+    public String _getId() {
+       return __id;
+    }
+    '
+	self.ownedAttribute->forEach(p : uml.Property | p.association = null)
+		p.attributeGettersSetters()
+	nl(2)	
+	
+	self.classAssociationMethods()	
+	self.ownedAttribute->forEach(assoc : uml.Association) {	  	  
+	}
+	
+	self.ownedOperation->forEach(op:uml.Operation) {
+	  op.operationImplMapping()
+	}
+
+	'
+} // End of class ' self.name
+  }
+  
+  /**
+   * Mapping of interfaces
+   */
+  uml.Interface::interfaceMapping (packageName:String) {
+    var pLocation:String = packageName.replace ("\\.", "/")    
+    file (package_dir + pLocation + "/" + self.name + ext)
+    '
+package ' package_name + "." +packageName ';
+    
+public interface ' self.name ' {'
+    self.ownedOperation->forEach(op:uml.Operation) {
+//       stdout.println ("Interface Operation: " + op.name)
+      '\n\tpublic ' 
+      if (op.returnResult.isEmpty())
+        'void'
+      else {
+        '' + op.returnResult.first().type.name
+      }
+//       newline
+      ' ' op.name ' ('
+      op.ownedParameter->forEach(param:uml.Parameter) between (", "){
+        '' + param.type.name + ' ' + param.name 
+      }
+      ');'
+    }
+    '
+}
+    '
+  }
+
+
+	/**
+	 * Returns a full package name on the form p1.p2.p3
+	 * Replaces occurrences of ' ' with '_'
+	 */
+	uml.Package::getFullName (): String {
+	  if (self.owner != null)
+	    result = self.owner.getFullName() + "."
+	//  else if (self.ownerPackage != null)
+	//    result = self.ownerPackage.getFullName() + "."
+	
+	  result += self.name.toLower().replace(" ", "_");  
+	}
+
+
+	//
+	// class Contructor
+	//
+	uml.Class::classConstructor() {
+	  ' 
+    // Default constructor
+    public ' self.name ' () {
+	  __id = String.valueOf(Math.random() * Math.random() * Calendar.getInstance().getTimeInMillis());'
+		self.ownedAttribute->forEach(p : uml.Property | p.association != null){
+		  '
+      ' p.propertyPrivateName() ' = new Hashtable (); '
+		}
+		'
+	}'
+	  newline
+	}
+ 
+  //
+  // classPrivateAttribute
+  //
+  uml.Property::classPrivateAttribute () {
+    '
+    private ' self.type.uml2JavaType() ' ' self.propertyPrivateName() '; '
+  }
+  
+  // classPrivateAssociations
+  uml.Property::classPrivateAssociations () {
+    println ("    private Hashtable " + self.propertyPrivateName() + ";")
+  }
+  
+  // attributeGetterSetters
+  uml.Property::attributeGettersSetters () {
+    '
+    public ' self.type.uml2JavaType() ' get' self.name.firstToUpper() ' () {
+        return ' self.propertyPrivateName() ';
+    }
+
+    public void set' self.name.firstToUpper() '(' self.type.uml2JavaType() ' __input ) {
+        ' self.propertyPrivateName()  ' = __input;
+    }
+	'    
+  }
+  
+  
+  /*
+  * Class Association Implementation
+  */
+  uml.Class::classAssociationMethods ()  {
+	self.ownedAttribute->forEach(p : uml.Property | p.association <> null) {
+	  p.associationAddMethod()
+	  p.associationRemoveMethod()
+	  p.associationCreateMethod()
+	  p.associationGetAllMethod()
+	  p.associationGetMethod()
+	  p.associationUpdateMethod()
+	 }
+   }
+   /*
+    * Add Method for Association
+    */
+   uml.Property::associationAddMethod ()  {
+	  '
+    public void add' self.propertySingleName() ' ( ' self.type.uml2JavaType() ' obj) {
+        ' self.propertyPrivateName() '.put(obj._getId(), obj);
+    }'     
+      newline(2)
+   }
+   /*
+   * Association Remove
+   */
+   uml.Property::associationRemoveMethod () {
+	  '
+	public void remove' self.propertySingleName() ' ( String id) {
+        ' self.propertyPrivateName() '.remove(id);
+    }'     
+      newline(2)     
+   }
+   
+   /*
+    * Association get
+    */
+    uml.Property::associationGetMethod () {
+	  <%    
+	public %> self.type.uml2JavaType() <% get%> self.propertySingleName() <% ( String id ) {
+        return %> self.propertyPrivateName() <%.get(id);
+    }%>     
+      newline(2)           
+    }
+    
+   /*
+    * Association get all
+    */
+    uml.Property::associationGetAllMethod () {
+	  '    
+	public Collection get' self.propertyPluralName() ' ( ) {
+        return ' self.propertyPrivateName() '.values();
+    }'    
+      newline(2)           
+    }           
+    
+   /*
+    * Association create
+    */
+    uml.Property::associationCreateMethod () {
+	  <%    
+	public %> self.type.uml2JavaType() <% create%> self.propertySingleName() <% () {
+        %> self.type.uml2JavaType() <% newObject = new %> self.type.uml2JavaType() <% ();
+        return newObject;
+    }%>     
+      newline(2)           
+    }
+    
+   /*
+    * Association update
+    */
+    uml.Property::associationUpdateMethod () {
+	  <%
+	public void update%> self.propertySingleName() <% (%> self.type.uml2JavaType() <% obj) {
+        %> self.propertyPrivateName() <%.remove(obj._getId()); 
+        %> self.propertyPrivateName() <%.put(obj._getId(), obj); 
+    }%>     
+      newline(2)           
+    }    
+
+
+  // standardClassImport  
+  uml.Class::standardClassImport ()  {
+    '
+import java.util.Vector;
+import java.util.Hashtable;
+import java.io.Serializable;
+	'
+  }
+  
+  // standardClassHeaderComment
+  uml.Class::standardClassHeaderComment ()  {
+    '
+/**
+ *
+ *  Generated class ' self.name '
+ *  @author ' author '
+ *  @date ' date () '
+ */
+	'
+  }
+  
+  /**
+   * Gets the owner package
+   */  
+  uml.PackageableElement::getOwnerPackage ():Object { 
+//    if (self.ownerPackage != null)
+//      result=self.ownerPackage
+//    else 
+      result=self.owner
+  }
+  
+  /**
+   * Operation mapping
+   */
+  uml.Operation::operationImplMapping () {
+    stdout.println ("Operation " + self.name)
+    '
+    	// Operation ' self.name '
+    '
+  }
+  
+  
+  uml.Operation::operationInterfaceMapping () {
+    stdout.println ("Operation: " + self.name)
+    ' 
+    	// operation ' self.name '
+    '
+   }
+   
+}

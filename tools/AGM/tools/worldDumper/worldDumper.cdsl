@@ -1,0 +1,10 @@
+import "AGMExecutive.idsl";
+
+Component worldDumper
+{
+	Communications
+	{
+		subscribesTo AGMExecutiveTopic;
+	};
+	language Cpp;
+};

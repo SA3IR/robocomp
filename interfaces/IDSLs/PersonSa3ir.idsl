@@ -1,0 +1,5 @@
+module RoboCompPersonSa3ir{
+	interface PersonToAgent{
+		void  peopleDetected(int npersons);
+	};
+};

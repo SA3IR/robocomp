@@ -1,0 +1,41 @@
+/**
+ * transformation CDSL
+ * date: 9/11/2011
+ * author: J. Adrián Romero Garcés
+ * description: PROPERTy FILES 
+ */
+  
+texttransformation dsl (in mdl:"http://robocompdsl/1.0") {
+
+  var editor:Boolean = true; //modo pruebas/editor
+  var fpath:String; //path donde se crea el fichero
+  
+  mdl.RComponent::main (){
+     if(editor == false){
+   		fpath = java("Entorno","getEnv","EJEMPLOS_DSL", "/home/adri/eclipseworkspace/dsl/bin");
+     }else{
+      	fpath = getenv("ROBOCOMP");
+      	//fpath = java("Entorno","getEnv","EJEMPLOS_DSL", getenv("JAVADSL"));
+     }
+    file(fpath + "/files/properties_port.txt");
+  	var find:boolean;
+  	self.communications.proxies->forEach(prx:mdl.Interfaz){
+  		find = false;
+  		self.communications.servants->forEach(srv:mdl.Interfaz){
+  		  if(srv.name.equals(prx.name)==true){
+  		  	find = true;
+  		  }
+  		}
+  		if(find==false){
+  			println(prx.name);
+  		} 		
+  	}
+  	
+  	file(fpath + "/files/properties_mod.txt");
+  	self.modules.modulename->forEach(mod:String){
+  		println(mod);
+  	}
+  }
+  
+}
+    

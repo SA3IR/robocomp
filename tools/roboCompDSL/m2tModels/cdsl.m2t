@@ -1,0 +1,4844 @@
+/**
+ * transformation CDSL
+ * date: 22/6/2011
+ * author: J. Adrián Romero Garcés
+ * description: Xtext CDSL model to RoboComp component
+ */
+  
+texttransformation dsl (in mdl:"http://robocompdsl/1.0") {
+
+  var editor:Boolean = true; //modo pruebas/editor
+  var gui_qt:Boolean = false; //interfaz qt
+  var qt_version:String = "Qt4"; //por defecto qt4
+  var worker_thread:Boolean = false; //worker como hebra
+  var name_port_config:String; 
+  var fpath:String; //path donde se crea el componente
+  var proxies_hash:Hashtable;
+  var pub_proxies_hash:Hashtable;
+  var sub_adapter_hash:Hashtable;
+  var proxies_interf_hash:Hashtable;
+  var pub_interf_hash:Hashtable;
+  var sub_interf_hash:Hashtable;
+  var servants_interf_hash:Hashtable;
+  var qt_type:String;//tipo de interfaz qt
+  var enum_names:List;
+  var is_agent:Boolean = false; //el componente es un agente?
+  
+  mdl.RComponent::main (){
+    
+     if(editor == false){
+   		fpath = java("Entorno","getEnv","EJEMPLOS_DSL", "/home/adri/eclipseworkspace/dsl/bin");
+     }else{
+      	fpath = getenv("OUTPUT_PATH");
+      	//fpath = java("Entorno","getEnv","EJEMPLOS_DSL", getenv("JAVADSL"));
+     }
+     
+     //miro si hay que añadir la interfaz gráfica
+     if(self.gui!=null){
+     	gui_qt = true;
+     	self.setQtInterface();
+     }
+     //miro si worker va a ser una hebra
+     if(self.worker!=null){
+     	worker_thread = true;
+     }
+     
+     //miro la versión de qt
+     if(self.qtversion!=null){
+     	self.setQtVersion();
+     }
+     
+     //creo el proxyHash
+     self.crearProxyHash();
+     //creo el pubProxyHash
+     self.crearPubProxyHash()
+     //creo el subProxyHash
+     self.crearSubAdapterHash()
+     //creo el proxyInterfHash
+     self.crearProxyInterfHash();
+     //creo el servantsInterfHash
+     self.crearServantInterfHash();
+     //creo el pubInterfHash
+     self.crearPubInterfHash();
+     //creo el pubInterfHash
+     self.crearSubInterfHash();
+     //carpeta bin
+     self.crearCarpetaBin();     
+     //carpeta etc
+     self.crearCarpetaEtc();
+     //carpeta src
+     self.crearCarpetaSrc()
+     //resto de ficheros (DoxyFile, CMakeLists y *.kdevelop)
+     self.crearRestoFicheros();
+     
+     self.crearREADMEStorm();
+  }  
+  
+ 
+  mdl.RComponent::crearCarpetaBin()
+  {
+    var name_to_lower:String = self.name.toLower();
+     
+  	//file(fpath + "/" + name_to_lower+"/bin/start"+self.name +".sh");
+  	file(fpath + "/bin/start"+self.name +".sh");
+'#!/bin/bash
+./'name_to_lower' --Ice.Config=../etc/generic_config,../etc/specific_config &'
+//./'name_to_lower'Comp --Ice.Config=../etc/config &'	
+  		
+  	//file(fpath + "/" + name_to_lower+"/bin/stop"+self.name+".sh");
+  	file(fpath + "/bin/stop"+self.name+".sh");
+'#!/bin/bash
+killall 'name_to_lower
+//killall 'name_to_lower'Comp'
+		
+  	//file(fpath + "/" + name_to_lower+"/bin/startDebug"+self.name+".sh");
+  	file(fpath + "/bin/startDebug"+self.name+".sh");
+'#!/bin/bash
+./'name_to_lower' --Ice.Config=../etc/generic_config.debug,../etc/specific_config.debug &'
+//./'name_to_lower'Comp --Ice.Config=../etc/config.debug &' 
+  		
+ 	//file(fpath + "/" + name_to_lower+"/bin/forceStop"+self.name+".sh");
+ 	file(fpath + "/bin/forceStop"+self.name+".sh");
+'#!/bin/bash
+killall -9 'name_to_lower
+//killall -9 'name_to_lower'Comp'
+
+  }
+  
+  mdl.RComponent::crearCarpetaEtc()
+  {
+    //if(getenv("CONFIGFILE").equals("y")){
+    //etc/configIce
+    if(self.existeFichero("etc", "specific_config")==false){
+    	self.crearFicheroConfigIce();
+    }
+    //etc/configIceDebug
+    if(self.existeFichero("etc", "specific_config.debug")==false){
+    	self.crearFicheroConfigIceDebug();  
+    }
+    //etc/config
+  	self.crearFicheroConfig();
+  	//etc/config.debug
+  	self.crearFicheroConfigDebug();
+    //}
+  }
+  
+  mdl.RComponent::crearREADMEStorm(){
+  	if(self.communications.subscribes.isEmpty() == false || self.communications.publishes.isEmpty()==false){
+  		file(fpath + "/README-STORM.txt"); 
+'1) To run IceStorm, start the icebox service: 
+  
+$ icebox --Ice.Config=config.icebox
+
+2) config.icebox contents:
+
+IceBox.Service.IceStorm=IceStormService,34:createIceStorm --Ice.Config=config.icestorm
+
+3) config.icestorm contents:
+
+IceStorm.TopicManager.Endpoints=tcp -p 9999
+IceStorm.Publish.Endpoints=tcp -p 10000
+IceStorm.Transient=1
+Freeze.DbEnv.IceStorm.DbHome=
+' 	
+  	}
+  }
+  
+  mdl.RComponent::existeFichero(String folder, String fileName):Boolean{
+  	//var pathFile:String = fpath + "/" + self.name.toLower() + "/src/" + fileName;
+  	var pathFile:String = fpath + "/" + folder + "/" + fileName;
+  	var exists:Boolean;
+    if(editor == false)
+    	exists = java("Entorno", "existsFile" , pathFile, "/home/adri/eclipseworkspace/dsl/bin");
+    else
+    	exists = java("Entorno", "existsFile" , pathFile, getenv("JAVADSL"));
+  	return exists;
+  }
+  
+  mdl.RComponent::crearCarpetaSrc()
+  {
+    //config.h
+    self.crearFicheroConfigSrc();
+  	//CMakeList
+  	self.crearCMakeListSrc();
+  	if(self.existeFichero("src", "CMakeListsSpecific.txt") == false){
+  		//CMakeListsSpecific.txt
+  		self.crearSpecificCMakeList();
+  	}
+  	//interfaz common behavior
+  	self.crearInterfazCommonBehavior();
+  	//component main
+	self.crearMain();
+  	//proxy monitor
+  	self.crearProxyMonitor();
+  	//clase genericWorker
+  	self.crearGenericWorker();
+  	
+  	if(self.existeFichero("src", "specificworker.h") == false || self.existeFichero("src", "specificworker.cpp") == false){
+  		//clase specificWorker
+  		self.crearSpecificWorker();
+  	}
+    if(self.existeFichero("src", "specificmonitor.h") == false || self.existeFichero("src", "specificmonitor.cpp") == false){
+  		//clase specificMonitor
+  		self.crearSpecificMonitor();
+    }
+  	//implementacion de interfaces
+  	self.crearServants();
+  	//crear ui_guiDlg.h
+  	if(gui_qt==true)
+  		self.crearGuiDlg();
+  }
+  
+  mdl.RComponent::crearRestoFicheros()
+  {
+  	self.crearDoxyFile();
+  	self.crearCMakeList();
+  	self.crearFicheroKdevelop();
+  }
+  
+  
+  /*
+   * CrarSubAdapterI
+   */
+   mdl.Interfaz::crearSubAdapterICppN(name:String, cont:Integer)
+  {
+  
+  		var name_adap:String;
+	    if(cont!=null){
+	    	name_adap = name + cont;
+	    }
+	    else{
+	    	name_adap = name;
+	    }
+	    
+  
+  
+'
+'name_adap'I::'name_adap'I(GenericWorker *_worker, QObject *parent) : QObject(parent)
+{
+	worker = _worker;
+	mutex = worker->mutex;       // Shared worker mutex
+	// Component initialization...
+}
+
+
+'name_adap'I::~'name_adap'I()
+{
+	// Free component resources here
+}
+
+// Component functions, implementation
+'
+	//INTERFACE FUNCTIONS IMPLEMENTATION (busca en SLICE_PATH)
+	var params:List;
+	//params.add(self.name + ".ice");
+	//params.add(self.name);
+
+	params.add(self._getContainer().name + ".ice");
+	params.add(self.name);	
+	if(cont==null){
+		params.add(-1);
+	}else{
+		params.add(cont);
+	}
+	if(editor==false)
+		println(java("ImportIceFunctions","setImportIceFunctionsImpl", params, "/home/adri/eclipseworkspace/dsl/bin"));
+  	else
+  		println(java("ImportIceFunctions","setImportIceFunctionsImpl", params, getenv("JAVADSL")));
+  
+  }
+  
+  mdl.Interfaz::crearSubAdapterIN(name:String, cont:Integer)
+  {
+	   	var name_adap:String;
+	    if(cont!=null){
+	    	name_adap = name + cont;
+	    }
+	    else{
+	    	name_adap = name;
+	    }
+	    
+		'
+class 'name_adap'I : public QObject , public virtual 'self._getContainer().name'::'name'
+{
+Q_OBJECT
+public:
+	'name_adap'I( GenericWorker *_worker, QObject *parent = 0 );
+	~'name_adap'I();
+	'
+	//INTERFACE FUNCTIONS DEFINITION
+	var list_params:List;	
+	var cad:String;
+	list_params.add(self._getContainer().name + ".ice");
+	list_params.add(name);
+	//java("ImportIceFunctions","setImportIceFunctions", "C:\\" + self.name + ".ice", "D:\\eclipse-modeling-helios-SR1-incubation-win32\\DSL\\bin");
+	if(editor==false){
+		println(java("ImportIceFunctions","setImportIceFunctions", list_params, "/home/adri/eclipseworkspace/dsl/bin"));
+	}else{ 
+		println(java("ImportIceFunctions","setImportIceFunctions", list_params, getenv("JAVADSL")));
+		//java("ImportIceFunctions","setImportIceFunctions", self.name + ".ice", "/home/adri/eclipseworkspace/dsl/bin");
+	}
+	'
+	QMutex *mutex;
+private:
+
+	GenericWorker *worker;
+public slots:
+
+
+};'
+  }
+  
+  
+  //
+  //Metodos auxiliares
+  //
+  
+  mdl.Interfaz::crearI(iname:String, n_adap:Integer)
+  {
+    //
+	// xxxI.h
+	//
+      	//file(fpath + "/" + iname.toLower()+"/src/"+self.name.toLower()+"I.h");
+      	file(fpath + "/src/"+self.name.toLower()+"I.h");
+    
+'/*
+ *    Copyright (C) 2006-2010 by RoboLab - University of Extremadura
+ *
+ *    This file is part of RoboComp
+ *
+ *    RoboComp is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    RoboComp is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with RoboComp.  If not, see <http://www.gnu.org/licenses/>.
+ */
+#ifndef 'self.name.toUpper()'I_H
+#define 'self.name.toUpper()'I_H
+
+// QT includes
+#include <QtCore/QObject>
+
+// Ice includes
+#include <Ice/Ice.h>
+#include <'self._getContainer().name.replace("RoboComp","")'.h>
+
+#include <config.h>
+#include "genericworker.h"
+
+using namespace 'self._getContainer().name';\n'
+
+	var cont:Integer = 0;
+	if(n_adap==null){
+	 	self.crearSubAdapterIN(iname, n_adap);
+	}
+	else{
+		while(cont <= n_adap)
+		{
+		  	self.crearSubAdapterIN(iname, cont);
+		  	cont = cont + 1;
+		}	
+	}
+'
+
+#endif' 
+
+//
+// xxxI.cpp
+//
+
+	//file(fpath + "/" + iname.toLower()+"/src/"+self.name.toLower()+"I.cpp");
+	file(fpath + "/src/"+self.name.toLower()+"I.cpp");
+'/*
+ *    Copyright (C) 2006-2010 by RoboLab - University of Extremadura
+ *
+ *    This file is part of RoboComp
+ *
+ *    RoboComp is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    RoboComp is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with RoboComp.  If not, see <http://www.gnu.org/licenses/>.
+ */
+#include "'self.name.toLower()'I.h"\n'
+
+
+	cont = 0;
+	if(n_adap==null){
+	 	self.crearSubAdapterICppN(iname, n_adap);
+	}
+	else{
+		while(cont <= n_adap)
+		{
+		  	self.crearSubAdapterICppN(iname, cont);
+		  	cont = cont + 1;
+		}	
+	}
+
+
+    
+  }
+ 
+  /*
+   * Comprueba si el componente es un agente
+   */
+  mdl.RComponent::isAgent(interf:mdl.Interfaz){
+  	if(interf.name.equalsIgnoreCase("AGMCommonBehavior")==true || interf.name.equalsIgnoreCase("AGMExecutiveTopic")==true || interf.name.equalsIgnoreCase("AGMAgentTopic")==true){
+	    	is_agent = true;
+	}
+  } 
+ 
+  mdl.RComponent::crearServants()
+  { 
+    self.communications.servants->forEach(serv:mdl.Interfaz)
+    {
+    	serv.crearI(serv.name, null)
+    }
+    /*self.communications.subscribes->forEach(sub:mdl.Interfaz)
+    {
+      	sub.crearI(self.name);
+    }*/
+    sub_adapter_hash.keys()->forEach(name:String)
+	{   
+		var interf:mdl.Interfaz;
+	  	self.communications.subscribes->forEach(sub_adap:mdl.Interfaz)
+	  	{
+	  		if(sub_adap.name.equalsIgnoreCase(name)){
+	  			interf = sub_adap;
+	 	 	}
+	 	 }
+  
+	   	var num:Integer = sub_adapter_hash.get(name);
+	    if(num!=null && num!=0){
+	       	interf.crearI(name, num);
+	    }
+	    else{    	
+	    	interf.crearI(name, null);  
+	    }
+	}
+  }
+  
+ /*
+  * Crea estructura de datos hash para saber si hay varios proxies a la misma interfaz.Crea estructura de datos hash para saber si hay varios proxies a la misma interfaz.
+  */ 
+  mdl.RComponent::crearProxyHash()
+  {
+	self.communications.proxies->forEach(prx:mdl.Interfaz)
+	{ 
+		var num_prx:Integer = 0;
+		num_prx = proxies_hash.get(prx.name); 
+		if(num_prx != null){
+			proxies_hash.put(prx.name, num_prx+1);
+		}
+		else{
+			proxies_hash.put(prx.name, 0);
+		}
+	}
+  }
+  
+   
+  mdl.RComponent::crearSubAdapterHash()
+  {
+  	self.communications.subscribes->forEach(adap:mdl.Interfaz)
+	{ 
+		var num_adap:Integer = 0;
+		num_adap = sub_adapter_hash.get(adap.name); 
+		if(num_adap != null){
+			sub_adapter_hash.put(adap.name, num_adap+1);
+		}
+		else{
+			sub_adapter_hash.put(adap.name, 0);
+		}
+	}
+  }
+  
+  mdl.RComponent::crearPubProxyHash()
+  {
+  	self.communications.publishes->forEach(prx:mdl.Interfaz)
+	{ 
+		var num_prx:Integer = 0;
+		num_prx = pub_proxies_hash.get(prx.name); 
+		if(num_prx != null){
+			pub_proxies_hash.put(prx.name, num_prx+1);
+		}
+		else{
+			pub_proxies_hash.put(prx.name, 0);
+		}
+	}
+  }
+  
+  mdl.RComponent::crearProxyInterfHash()
+  {
+	self.communications.proxies->forEach(prx:mdl.Interfaz)
+	{ 
+		var num_prx:Integer = 0;
+		var interf_name:String = prx._getContainer().name.replace("RoboComp","");
+		num_prx = proxies_interf_hash.get(interf_name); 
+		if(num_prx != null){
+			proxies_interf_hash.put(interf_name, num_prx+1);
+		}
+		else{
+			proxies_interf_hash.put(interf_name, 0);
+		}
+	}
+  }
+  
+  mdl.RComponent::crearServantInterfHash()
+  {
+	self.communications.servants->forEach(srv:mdl.Interfaz)
+	{ 
+	    self.isAgent(srv);
+		var num_srv:Integer = 0;
+		var interf_name:String = srv._getContainer().name.replace("RoboComp","");
+		num_srv = servants_interf_hash.get(interf_name); 
+		if(num_srv != null){
+			servants_interf_hash.put(interf_name, num_srv+1);
+		}
+		else{
+			servants_interf_hash.put(interf_name, 0);
+		}
+	}
+  }
+  
+  mdl.RComponent::crearPubInterfHash()
+  {
+    self.communications.publishes->forEach(pub:mdl.Interfaz)
+	{ 
+	    self.isAgent(pub);
+		var num_pub:Integer = 0;
+		var interf_name:String = pub._getContainer().name.replace("RoboComp","");
+		num_pub = pub_interf_hash.get(interf_name); 
+		if(num_pub != null){
+			pub_interf_hash.put(interf_name, num_pub+1);
+		}
+		else{
+			pub_interf_hash.put(interf_name, 0);
+		}
+	}
+  }
+  
+  mdl.RComponent::crearSubInterfHash()
+  {
+    self.communications.subscribes->forEach(sub:mdl.Interfaz)
+	{ 
+	    self.isAgent(sub);
+		var num_sub:Integer = 0;
+		var interf_name:String = sub._getContainer().name.replace("RoboComp","");
+		num_sub = sub_interf_hash.get(interf_name); 
+		if(num_sub != null){
+			sub_interf_hash.put(interf_name, num_sub+1);
+		}
+		else{
+			sub_interf_hash.put(interf_name, 0);
+		}
+	}
+  }
+  
+  mdl.RComponent::crearMain()
+  {
+  	//file(fpath + "/" + self.name.toLower()+"/src/"+self.name.toLower()+"Comp.cpp");
+  	file(fpath + "/src/"+self.name.toLower()+".cpp");
+'/*
+ *    Copyright (C) 2006-2010 by RoboLab - University of Extremadura
+ *
+ *    This file is part of RoboComp
+ *
+ *    RoboComp is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    RoboComp is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with RoboComp.  If not, see <http://www.gnu.org/licenses/>.
+ */
+/** \\mainpage RoboComp::genericComp
+ *
+ * \\section intro_sec Introduction
+ *
+ * The genericComp component...
+ *
+ * \\section interface_sec Interface
+ *
+ * genericComp interface...
+ *
+ * \\section install_sec Installation
+ *
+ * \\subsection install1_ssec Software depencences
+ * genericComp ...
+ *
+ * \\subsection install2_ssec Compile and install
+ * cd genericComp
+ * <br>
+ * cmake . && make
+ * <br>
+ * To install:
+ * <br>
+ * sudo make install
+ *
+ * \\section guide_sec User guide
+ *
+ * \\subsection config_ssec Configuration file
+ *
+ * <p>
+ * The configuration file genericComp/etc/specific_config and genericComp/etc/generic_config...
+ * </p>
+ *
+ * \\subsection execution_ssec Execution
+ *
+ * Just: "${PATH_TO_BINARY}/genericComp --Ice.Config=${PATH_TO_CONFIG_FILE}"
+ *
+ * \\subsection running_ssec Once running
+ *
+ * ...
+ *
+ */
+// QT includes
+#include <QtCore>
+#include <QtGui>
+
+// ICE includes
+#include <Ice/Ice.h>
+'
+if(self.communications.publishes.isEmpty() == false || self.communications.subscribes.isEmpty() == false){
+'#include <IceStorm/IceStorm.h>'
+}
+'
+#include <Ice/Application.h>
+
+#include <rapplication/rapplication.h>
+#include <qlog/qlog.h>
+// View the config.h file for config options like
+// QtGui, etc...
+#include "config.h"
+#include "genericmonitor.h"
+#include "genericworker.h"
+#include "specificworker.h"
+#include "specificmonitor.h"
+#include "commonbehaviorI.h"
+'
+	self.communications.servants->forEach(srv:mdl.Interfaz)
+	{
+		'#include <'srv.name.toLower()'I.h>\n' 	
+	}
+	
+	self.communications.subscribes->forEach(sub:mdl.Interfaz)
+	{
+		'#include <'sub.name.toLower()'I.h>\n' 	
+	}
+'
+// Includes for remote proxy example
+// #include <Remote.h>
+'
+	if(gui_qt == true){
+'#include <ui_guiDlg.h>
+'	
+	}
+	
+	proxies_interf_hash.keys()->forEach(prx: String)
+	{
+		'#include <'prx'.h>\n'
+	}
+	
+	pub_interf_hash.keys()->forEach(pub:String)
+	{
+	  	'#include <'pub'.h>\n'
+	}
+	
+	/*self.communications.publishes->forEach(pub:mdl.Interfaz)
+	{
+		'#include <'pub.name'.h>\n'
+	}*/
+'
+
+// User includes here
+
+// Namespaces
+using namespace std;
+using namespace RoboCompCommonBehavior;
+'
+	//namespaces para las interfaces
+	servants_interf_hash.keys()->forEach(srv:String)
+	{
+		'using namespace RoboComp'srv';\n'
+	}
+	
+	sub_interf_hash.keys()->forEach(sub:String)
+	{
+		'using namespace RoboComp'sub';\n' 
+	}
+	
+	//namespaces para los proxies	
+	proxies_interf_hash.keys()->forEach(prx: String)
+	{
+		'using namespace RoboComp'prx';\n'
+	}
+		
+	pub_interf_hash.keys()->forEach(pub: String)
+	{
+		'using namespace RoboComp'pub';\n'
+	}
+
+'
+
+class 'self.name' : public RoboComp::Application
+{
+private:
+	// User private data here
+
+	void initialize();
+	MapPrx mprx;
+
+public:
+	virtual int run(int, char*[]);
+};
+
+void 'self.name'::initialize()
+{
+	// Config file properties read example
+	// configGetString( PROPERTY_NAME_1, property1_holder, PROPERTY_1_DEFAULT_VALUE );
+	// configGetInt( PROPERTY_NAME_2, property1_holder, PROPERTY_2_DEFAULT_VALUE );
+}
+
+int 'self.name'::run(int argc, char* argv[])
+{
+#ifdef USE_QTGUI
+	QApplication a(argc, argv);  // GUI application
+#else
+	QCoreApplication a(argc, argv);  // NON-GUI application
+#endif
+	int status=EXIT_SUCCESS;
+
+	// Remote server proxy access example
+	// RemoteComponentPrx remotecomponent_proxy;
+	'
+	
+	// instancias de los proxies. Si hay mas de un proxy a una misma interfaz se enumera desde 0
+	proxies_hash.keys()->forEach(prx:String)
+	{  	
+	  	var n_proxies:Integer = proxies_hash.get(prx);
+	  	if (n_proxies != 0 && n_proxies!=null){
+	  		var cont:Integer = 0;
+	  		while(cont<=n_proxies){
+	  		  	prx'Prx 'prx.toLower() cont'_proxy;\n'
+	  			cont = cont + 1;
+	  		}
+	  	}else{
+	  		prx'Prx 'prx.toLower()'_proxy;\n'
+	  	}
+	}
+	/*self.communications.proxies->forEach(prx:mdl.Interfaz)
+	{
+		prx.name'Prx 'prx.name.toLower()'_proxy;\n'
+	}*/
+	
+	//No tiene sentido tener más de un pub al mismo topico
+	//Esto no es necesario
+	/*self.communications.publishes->forEach(pub:mdl.Interfaz)
+	{
+		pub.name'Prx 'pub.name.toLower()'_proxy;\n'
+	}*/
+	
+	//IceStorm pubs	
+	'
+
+	string proxy;
+
+	// User variables
+
+
+	initialize();
+
+	// Remote server proxy creation example
+	// try
+	// {
+	// 	// Load the remote server proxy
+	//	proxy = getProxyString("RemoteProxy");
+	//	remotecomponent_proxy = RemotePrx::uncheckedCast( communicator()->stringToProxy( proxy ) );
+	//	if( !remotecomponent_proxy )
+	//	{
+	//		rInfo(QString("Error loading proxy!"));
+	//		return EXIT_FAILURE;
+	//	}
+	//catch(const Ice::Exception& ex)
+	//{
+	//	cout << "[" << PROGRAM_NAME << "]: Exception: " << ex << endl;
+	//	return EXIT_FAILURE;
+	//}
+	//rInfo("RemoteProxy initialized Ok!");
+	// 	// Now you can use remote server proxy (remotecomponent_proxy) as local object
+	'
+	//creacion de los proxies y crea string con los parámetros del worker
+	var params:String = "";
+	var cont:Integer = 0;
+	proxies_hash.keys()->forEach(prx:String)
+	{  	
+	  	self.crearProxy(prx);
+	}
+
+	if(self.communications.publishes.isEmpty()==false || self.communications.subscribes.isEmpty()==false){
+	'
+	IceStorm::TopicManagerPrx topicManager = IceStorm::TopicManagerPrx::checkedCast(communicator()->propertyToProxy("TopicManager.Proxy"));
+	'
+	}
+	
+	pub_proxies_hash.keys()->forEach(prx:String)
+	{
+	  	self.crearPubProxy(prx);
+	}
+	/*self.communications.publishes->forEach(pub:mdl.Interfaz)
+	{
+		pub.crearPubIceStorm();
+		if(cont == 0){
+			params+=pub.name.toLower()+"_proxy";
+		}
+		else{
+		  	params+=", "+pub.name.toLower()+"_proxy";
+		}
+		cont+=1;
+	}*/
+	
+	'
+	
+	GenericWorker *worker = new SpecificWorker('/*params*/'mprx);
+	//Monitor thread
+	GenericMonitor *monitor = new SpecificMonitor(worker,communicator());
+	QObject::connect(monitor,SIGNAL(kill()),&a,SLOT(quit()));
+	QObject::connect(worker,SIGNAL(kill()),&a,SLOT(quit()));
+	monitor->start();
+	
+	if ( !monitor->isRunning() )
+		return status;
+	try
+	{
+		// Server adapter creation and publication
+		Ice::ObjectAdapterPtr adapterCommonBehavior = communicator()->createObjectAdapter("CommonBehavior");
+		CommonBehaviorI *commonbehaviorI = new CommonBehaviorI(monitor );
+		adapterCommonBehavior->add(commonbehaviorI, communicator()->stringToIdentity("commonbehavior"));
+		adapterCommonBehavior->activate();
+		'
+		
+		sub_adapter_hash.keys()->forEach(adap:String)
+		{
+	  		self.crearSubAdapter(adap);
+		}	
+		
+		/*self.communications.subscribes->forEach(sub:mdl.Interfaz)
+		{
+			sub.crearSubIceStorm();
+		}*/
+		
+		'// Server adapter creation and publication'
+		// conexiones de las interfaces
+		self.communications.servants->forEach(srv:mdl.Interfaz)
+		{
+		'
+		Ice::ObjectAdapterPtr adapter'srv.name' = communicator()->createObjectAdapter("'srv.name'Comp");
+		'
+			srv.name'I *'srv.name.toLower()' = new 'srv.name'I(worker);
+		adapter'srv.name'->add('srv.name.toLower()', communicator()->stringToIdentity("'srv.name.toLower()'"));\n
+		adapter'srv.name'->activate();'	
+		}
+		'
+		cout << SERVER_FULL_NAME " started" << endl;
+
+		// User defined QtGui elements ( main window, dialogs, etc )
+
+#ifdef USE_QTGUI
+		//ignoreInterrupt(); // Uncomment if you want the component to ignore console SIGINT signal (ctrl+c).
+		a.setQuitOnLastWindowClosed( true );
+#endif
+		// Run QT Application Event Loop
+		a.exec();
+		status = EXIT_SUCCESS;
+	}
+	catch(const Ice::Exception& ex)
+	{
+		status = EXIT_FAILURE;
+
+		cout << "[" << PROGRAM_NAME << "]: Exception raised on main thread: " << endl;
+		cout << ex;
+
+#ifdef USE_QTGUI
+		a.quit();
+#endif
+		monitor->exit(0);\n'
+		if(worker_thread == true){
+		'\t\tworker->exit(0);\n'	
+		}	
+	'}
+
+	return status;
+}
+
+int main(int argc, char* argv[])
+{
+	bool hasConfig = false;
+	string arg;
+	'//self.name'Comp app;
+	self.name' app;
+
+	// Search in argument list for --Ice.Config= argument
+	for (int i = 1; i < argc; ++i)
+	{
+		arg = argv[i];
+		if ( arg.find ( "--Ice.Config=", 0 ) != string::npos )
+			hasConfig = true;
+	}
+
+	if ( hasConfig )
+		return app.main( argc, argv );
+	else
+		return app.main(argc, argv, "../etc/generic_config"); // "config" is the default config file name
+}'
+  }
+  
+  /*mdl.Interfaz::crearSubIceStorm()
+  {
+    	'// Server adapter creation and publication
+    	Ice::ObjectAdapterPtr 'self.name'_adapter = communicator()->createObjectAdapter("'self.name'Topic");
+    	'self.name'Ptr 'self.name.toLower()'I_ = new 'self.name'I(worker);
+    	Ice::ObjectPrx 'self.name.toLower()'_proxy = 'self.name'_adapter->addWithUUID('self.name.toLower()'I_)->ice_oneway();
+    	IceStorm::TopicPrx 'self.name.toLower()'_topic;
+    	while(!'self.name.toLower()'_topic){
+	    	try {
+	    		'self.name.toLower()'_topic = topicManager->retrieve("'self.name'");
+	    	 	IceStorm::QoS qos;
+	      		'self.name.toLower()'_topic->subscribeAndGetPublisher(qos, 'self.name.toLower()'_proxy);
+	    	}
+	    	catch (const IceStorm::NoSuchTopic&) {
+	       		// Error! No topic found!
+	    	}
+    	}
+    	'self.name'_adapter->activate();
+    	'
+  }*/
+  
+  mdl.RComponent::crearSubAdapterN(name:String, cont:Integer)
+  {
+	   	var name_adap:String;
+	    if(cont!=null){
+	    	name_adap = name + cont;
+	    }
+	    else{
+	    	name_adap = name;
+	    }
+	    
+		'// Server adapter creation and publication
+    	Ice::ObjectAdapterPtr 'name_adap'_adapter = communicator()->createObjectAdapter("'name_adap'Topic");
+    	'name'Ptr 'name_adap.toLower()'I_ = new 'name_adap'I(worker);
+    	Ice::ObjectPrx 'name_adap.toLower()'_proxy = 'name_adap'_adapter->addWithUUID('name_adap.toLower()'I_)->ice_oneway();
+    	IceStorm::TopicPrx 'name_adap.toLower()'_topic;
+    	if(!'name_adap.toLower()'_topic){
+	    	try {
+	    		'name_adap.toLower()'_topic = topicManager->create("'name_adap'");
+	    	}
+	    	catch (const IceStorm::TopicExists&) {
+	    	  	//Another client created the topic
+	    	  	try{
+	       			'name_adap.toLower()'_topic = topicManager->retrieve("'name_adap'");
+	    	  	}catch(const IceStorm::NoSuchTopic&){
+	    	  	  	//Error. Topic does not exist
+				}
+	    	}
+	    	IceStorm::QoS qos;
+	      	'name_adap.toLower()'_topic->subscribeAndGetPublisher(qos, 'name_adap.toLower()'_proxy);
+    	}
+    	'name_adap'_adapter->activate();
+    	'
+  }
+  
+  mdl.RComponent::crearSubAdapter(name:String)
+  {
+	    var num:Integer = sub_adapter_hash.get(name);
+	    if(num!=null && num!=0){
+	    	var cont:Integer = 0;
+	    	while(cont<=num){
+	 			self.crearSubAdapterN(name, cont);
+	    		cont = cont+1;
+	    	}
+	    }
+	    else{
+	    	self.crearSubAdapterN(name, null);  
+	    }
+  }
+  
+  /*
+  mdl.Interfaz::crearPubIceStorm()
+  {
+	'
+	IceStorm::TopicPrx 'self.name.toLower()'_topic;
+    while(!'self.name.toLower()'_topic){
+		try {
+			'self.name.toLower()'_topic = topicManager->retrieve("'self.name'");
+		}catch (const IceStorm::NoSuchTopic&){
+			try{
+				'self.name.toLower()'_topic = topicManager->create("'self.name'");
+			}catch (const IceStorm::TopicExists&){
+				// Another client created the topic.
+			}
+		}
+	}
+	Ice::ObjectPrx 'self.name.toLower()'_pub = 'self.name.toLower()'_topic->getPublisher()->ice_oneway();
+	'self.name'Prx 'self.name.toLower()' = 'self.name'Prx::uncheckedCast('self.name.toLower()'_pub);
+	mprx["'self.name'Pub"] = (::IceProxy::Ice::Object*)(&'self.name.toLower()');
+	'
+  }*/
+  
+  /*
+   * Proxies for Ice
+   */
+  
+  mdl.RComponent::crearProxyIce(name:String, cont:Integer)
+  {
+    
+    var name_prx:String;
+    if(cont!=null){
+    	name_prx = name + cont;
+    }
+    else{
+    	name_prx = name;
+    }
+    
+	//Nuevo método
+	'//Remote server proxy creation example
+	try
+	{
+		'name_prx.toLower()'_proxy = 'name'Prx::uncheckedCast( communicator()->stringToProxy( getProxyString("'name_prx'Proxy") ) );
+	}
+	catch(const Ice::Exception& ex)
+	{
+		cout << "[" << PROGRAM_NAME << "]: Exception: " << ex;
+		return EXIT_FAILURE;
+	}
+	rInfo("'name_prx'Proxy initialized Ok!");
+	mprx["'name_prx'Proxy"] = (::IceProxy::Ice::Object*)(&'name_prx.toLower()'_proxy);'
+  
+  }
+  
+  mdl.RComponent::crearProxy(prx:String)
+  {
+    var num:Integer = proxies_hash.get(prx);
+    if(num!=null && num!=0){
+    	var cont:Integer = 0;
+    	while(cont<=num){
+ 			self.crearProxyIce(prx, cont);
+    		cont = cont+1;
+    	}
+    }
+    else{
+    	self.crearProxyIce(prx, null);  
+    }
+  }
+  
+  /*
+   * Proxies for IceStorm
+   */
+  
+  mdl.RComponent::crearPubProxyIce(name:String, cont:Integer)
+  {
+    
+    var name_prx:String;
+    if(cont!=null){
+    	name_prx = name + cont;
+    }
+    else{
+    	name_prx = name;
+    }
+    
+	'IceStorm::TopicPrx 'name_prx.toLower()'_topic;
+    while(!'name_prx.toLower()'_topic){
+		try {
+			'name_prx.toLower()'_topic = topicManager->create("'name_prx'"); // communicator()->getProperties()->getProperty("'name_prx'") does not work!
+		}catch (const IceStorm::TopicExists&){
+		  	// Another client created the topic.
+			try{
+				'name_prx.toLower()'_topic = topicManager->retrieve("'name_prx'"); // communicator()->getProperties()->getProperty("'name_prx'") does not work!
+			}catch (const IceStorm::NoSuchTopic&){
+				//Error. Topic does not exist.	
+			}
+		}
+	}
+	Ice::ObjectPrx 'name_prx.toLower()'_pub = 'name_prx.toLower()'_topic->getPublisher()->ice_oneway();
+	'name'Prx 'name_prx.toLower()' = 'name'Prx::uncheckedCast('name_prx.toLower()'_pub);
+	mprx["'name_prx'Pub"] = (::IceProxy::Ice::Object*)(&'name_prx.toLower()');
+	'
+  }
+  
+  mdl.RComponent::crearPubProxy(prx:String)
+  {
+  	var num:Integer = pub_proxies_hash.get(prx);
+    if(num!=null && num!=0){
+    	var cont:Integer = 0;
+    	while(cont<=num){
+ 			self.crearPubProxyIce(prx, cont);
+    		cont = cont+1;
+    	}
+    }
+    else{
+    	self.crearPubProxyIce(prx, null);  
+    }
+  }
+ 
+ /*
+  * 
+  */
+ 
+  mdl.RComponent::crearGenericWorker()
+  {
+  	//worker.h
+  	file(fpath + "/src/genericworker.h");
+  	//preparar los parámetros para el constructor
+  	var params:String = "";
+  	self.communications.proxies->forEach(prx: mdl.Interfaz)
+  	{
+  		params+="RoboComp"+prx.name+"::"+prx.name+"Prx "+prx.name.toLower()+"prx, ";
+  	}
+  	
+  	
+'/*
+ *    Copyright (C) 2006-2010 by RoboLab - University of Extremadura
+ *
+ *    This file is part of RoboComp
+ *
+ *    RoboComp is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    RoboComp is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with RoboComp.  If not, see <http://www.gnu.org/licenses/>.
+ */
+#ifndef GENERICWORKER_H
+#define GENERICWORKER_H
+
+// #include <ipp.h>
+#include "config.h"
+#include <QtGui>
+#include <stdint.h>
+#include <qlog/qlog.h>
+#include <CommonBehavior.h>
+'
+	if(gui_qt == true){
+		'#include <ui_guiDlg.h>\n'
+		'#include "config.h"\n'
+	}
+	
+	if(is_agent==true){
+		'#include <agm.h>\n'
+	}
+	
+	/*self.communications.proxies->forEach(prx:mdl.Interfaz)
+	{
+		'#include <'prx.name'.h>\n'
+	}*/
+	proxies_interf_hash.keys()->forEach(prx: String)
+	{
+		'#include <'prx'.h>\n'
+	}
+	
+	/*self.communications.publishes->forEach(pub:mdl.Interfaz)
+	{
+		'#include <'pub.name'.h>\n'
+	}*/
+	
+	pub_interf_hash.keys()->forEach(pub:String)
+	{
+		'#include <'pub'.h>\n'
+	}
+	
+	servants_interf_hash.keys()->forEach(srv:String)
+	{
+		'#include <'srv'.h>\n';
+	}
+	/*self.communications.servants->forEach(serv:mdl.Interfaz)
+	{
+		'#include <'serv.name'.h>\n';
+	}*/
+	
+	sub_interf_hash.keys()->forEach(sub:String)
+	{
+		'#include <'sub'.h>\n';
+	}
+			
+	/*self.communications.subscribes->forEach(sub:mdl.Interfaz)
+	{
+		'#include <'sub.name'.h>\n';
+	}*/
+
+	self.classes.classname->forEach(class:String){
+		if(class.contains(".h")==true){
+		  '#include "'class.replace("/classes/", "")'"\n'
+			//'#include "'class.replace("/Classes/", "")'"\n'
+		}
+	}
+
+'
+#define CHECK_PERIOD 5000
+#define BASIC_PERIOD 100
+
+typedef map <string,::IceProxy::Ice::Object*> MapPrx;
+
+using namespace std;
+
+/**
+       \\brief
+       @author authorname
+*/
+'
+	/*self.communications.servants->forEach(serv:mdl.Interfaz)
+	{
+		'using namespace RoboComp'serv.name';\n';
+	}*/
+	
+	proxies_interf_hash.keys()->forEach(prx:String)
+	{
+	  	'using namespace RoboComp'prx';\n';
+	}
+	
+	
+	servants_interf_hash.keys()->forEach(srv:String)
+	{
+	  	'using namespace RoboComp'srv';\n';
+	}
+	
+	/*self.communications.subscribes->forEach(sub:mdl.Interfaz)
+	{
+		'using namespace RoboComp'sub.name';\n';
+	}*/
+	
+	sub_interf_hash.keys()->forEach(sub:String)
+	{
+	  	'using namespace RoboComp'sub';\n';
+	}
+
+	pub_interf_hash.keys()->forEach(pub:String)
+	{
+		'using namespace RoboComp'pub';\n';
+	}
+
+	if(is_agent==true){
+		'struct BehaviorNavegacionParameters 
+		{
+			RoboCompPlanning::Action action;
+			std::vector< std::vector <std::string> > plan;
+		};\n'
+	}
+
+
+	if(gui_qt == true){
+//'
+//class GenericWorker : public 'qt_type', public Ui_guiDlg\n'
+'class GenericWorker :
+#ifdef USE_QTGUI
+public 'qt_type', public Ui_guiDlg
+#else
+public QObject
+#endif\n'
+	}else if(worker_thread == true){
+'
+class GenericWorker : public QThread\n'
+	}else{	
+'
+class GenericWorker : public QObject\n'
+	}
+'{
+Q_OBJECT
+public:
+'
+	if(gui_qt = true){
+'	GenericWorker(MapPrx& mprx);'
+	}else if(worker_thread == false){
+'	GenericWorker('/*params*/'MapPrx& mprx, QObject *parent = 0);'
+	}	
+	else{
+'	GenericWorker('/*params*/'MapPrx& mprx, QThread *parent = 0);'
+	}	
+'
+	virtual ~GenericWorker();
+	virtual void killYourSelf();
+	virtual void setPeriod(int p);
+	
+	virtual bool setParams(RoboCompCommonBehavior::ParameterList params) = 0;
+	QMutex *mutex;                //Shared mutex with servant
+
+'
+
+	if(is_agent==true){
+'		
+	bool activate(const BehaviorNavegacionParameters& parameters);
+	bool deactivate();
+	bool isActive() { return active; }
+	RoboCompAGMWorldModel::BehaviorResultType status();\n'
+	}
+
+  	proxies_hash.keys()->forEach(prx:String)
+	{  	
+	  	var n_proxies:Integer = proxies_hash.get(prx);
+	  	if (n_proxies != 0 && n_proxies!=null){
+	  		var cont:Integer = 0;
+	  		while(cont<=n_proxies){
+	  		  	'\t'prx'Prx 'prx.toLower() cont'_proxy;\n';
+	  			cont = cont + 1;
+	  		}
+	  	}else{
+	  		'\t'prx'Prx 'prx.toLower()'_proxy;\n';
+	  	}
+	}
+	
+	/*self.communications.publishes->forEach(pub:mdl.Interfaz)
+	{
+		'\t'pub.name'Prx 'pub.name.toLower()';\n';
+	}*/
+	
+	pub_proxies_hash.keys()->forEach(prx:String)
+	{  	
+	  	var n_proxies:Integer = pub_proxies_hash.get(prx);
+	  	if (n_proxies != 0 && n_proxies!=null){
+	  		var cont:Integer = 0;
+	  		while(cont<=n_proxies){
+	  		  	'\t'prx'Prx 'prx.toLower() cont';\n';
+	  			cont = cont + 1;
+	  		}
+	  	}else{
+	  		'\t'prx'Prx 'prx.toLower()';\n';
+	  	}
+	}
+	
+	var list_params:List;
+	var is_generic:Boolean = true;
+	self.communications.servants->forEach(serv:mdl.Interfaz)
+	{
+		list_params.clear();	
+		list_params.add(serv._getContainer().name + ".ice");
+		list_params.add(serv.name);
+		list_params.add(is_generic);
+		list_params.add(-1);
+		if(editor == false)
+			print(java("ImportIceFunctions","setImportIceFunctionstoWorker", list_params, "/home/adri/eclipseworkspace/dsl/bin"));
+		else
+			print(java("ImportIceFunctions","setImportIceFunctionstoWorker", list_params, getenv("JAVADSL")));
+	}
+	
+	sub_adapter_hash.keys()->forEach(name:String)
+	{  	
+	  	list_params.clear();	
+		var container_name:String = "";
+		self.communications.subscribes->forEach(sub:mdl.Interfaz){
+			if(sub.name.equalsIgnoreCase(name)==true){
+				container_name = sub._getContainer().name;
+				//break;
+			}
+		}
+			  	
+	  	var n_sub:Integer = sub_adapter_hash.get(name);
+	  	if (n_sub != 0 && n_sub!=null){
+	  		var cont:Integer = 0;
+	  		while(cont<=n_sub){
+			  	list_params.add(container_name + ".ice");
+				list_params.add(name);
+				list_params.add(is_generic);
+				list_params.add(cont);	
+	  		  	println(java("ImportIceFunctions","setImportIceFunctionstoWorker", list_params, getenv("JAVADSL")));
+	  			cont = cont + 1;
+	  			list_params.clear();
+	  		}
+	  	}else{
+	  	  	list_params.add(container_name + ".ice");
+			list_params.add(name);
+			list_params.add(is_generic);
+			list_params.add(-1);	
+	  		println(java("ImportIceFunctions","setImportIceFunctionstoWorker", list_params, getenv("JAVADSL")));
+	  	}
+	}
+	
+	/*self.communications.subscribes->forEach(sub:mdl.Interfaz)
+	{
+		list_params.clear();	
+		list_params.add(sub._getContainer().name + ".ice");
+		list_params.add(sub.name);
+		list_params.add(is_generic);
+		if(editor == false)
+			println(java("ImportIceFunctions","setImportIceFunctionstoWorker", list_params, "/home/adri/eclipseworkspace/dsl/bin"));
+		else
+			println(java("ImportIceFunctions","setImportIceFunctionstoWorker", list_params, getenv("JAVADSL")));
+	}*/
+	
+'protected:
+'
+	if(worker_thread ==false){
+'	QTimer timer;
+'
+	}
+'	int Period;
+'
+
+	if(is_agent==true){
+'	int iter;
+	bool active;
+	AGMModel::SPtr worldModel;
+	ParameterMap params;
+	BehaviorNavegacionParameters p;
+	bool setParametersAndPossibleActivation(const ParameterMap &prs, bool &reactivated);
+	RoboCompPlanning::Action createAction(std::string s);\n'
+	}
+
+	if(worker_thread == false){
+'public slots:
+	virtual void compute() = 0;
+'
+	}
+	else{
+'	virtual void run() = 0;
+'	 
+	}
+'signals:
+	void kill();
+};
+
+#endif'
+  
+  	//worker.cpp
+  	//file(fpath + "/" + self.name.toLower()+"/src/genericworker.cpp");
+  	file(fpath + "/src/genericworker.cpp");
+'/*
+ *    Copyright (C) 2006-2010 by RoboLab - University of Extremadura
+ *
+ *    This file is part of RoboComp
+ *
+ *    RoboComp is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    RoboComp is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with RoboComp.  If not, see <http://www.gnu.org/licenses/>.
+ */
+#include "genericworker.h"
+/**
+* \\brief Default constructor
+*/
+'
+	if(gui_qt == true){
+//'GenericWorker::GenericWorker(MapPrx& mprx) : Ui_guiDlg()'
+'GenericWorker::GenericWorker(MapPrx& mprx) :
+#ifdef USE_QTGUI
+Ui_guiDlg()
+#else
+QObject()
+#endif\n'
+	}else if(worker_thread == false){
+'GenericWorker::GenericWorker(MapPrx& mprx, QObject *parent) : QObject(parent)'
+	}
+	else{
+'GenericWorker::GenericWorker(MapPrx& mprx, QThread *parent) : QThread(parent)'
+	}
+'
+{
+'
+
+  	proxies_hash.keys()->forEach(prx:String)
+	{  	
+	  	var n_proxies:Integer = proxies_hash.get(prx);
+	  	if (n_proxies != 0 && n_proxies!=null){
+	  		var cont:Integer = 0;
+	  		while(cont<=n_proxies){
+	  		  	//prx.toLower()+cont'_proxy = (*(RoboComp'prx'::'prx'Prx*)mprx["'prx+cont'Proxy"]);\n';
+	  		  	'\t'prx.toLower()+cont'_proxy = (*('prx'Prx*)mprx["'prx+cont'Proxy"]);\n';
+	  			cont = cont + 1;
+	  		}
+	  	}else{
+	  		//prx.toLower()'_proxy = (*(RoboComp'prx'::'prx'Prx*)mprx["'prx'Proxy"]);\n';
+	  		'\t'prx.toLower()'_proxy = (*('prx'Prx*)mprx["'prx'Proxy"]);\n';
+	  	}
+	}
+  	
+	
+	/*self.communications.publishes->forEach(pub:mdl.Interfaz)
+	{
+		//pub.name.toLower()' = (*(RoboComp'pub.name'::'pub.name'Prx*)mprx["'pub.name'Pub"]);\n';
+		pub.name.toLower()' = (*('pub.name'Prx*)mprx["'pub.name'Pub"]);\n';
+	}*/
+	
+	pub_proxies_hash.keys()->forEach(prx:String)
+	{  	
+	  	var n_proxies:Integer = pub_proxies_hash.get(prx);
+	  	if (n_proxies != 0 && n_proxies!=null){
+	  		var cont:Integer = 0;
+	  		while(cont<=n_proxies){
+	  		  	'\t'prx.toLower()+cont' = (*('prx'Prx*)mprx["'prx+cont'Pub"]);\n';
+	  			cont = cont + 1;
+	  		}
+	  	}else{
+	  		'\t'prx.toLower()' = (*('prx'Prx*)mprx["'prx'Pub"]);\n';
+	  	}
+	}
+	
+'
+	mutex = new QMutex();
+	'
+	if(gui_qt == true){
+//	'setupUi(this);
+//	show();
+//	'
+	'#ifdef USE_QTGUI
+		setupUi(this);
+		show();
+	#endif
+	'
+	}
+	if(worker_thread == false){
+	'Period = BASIC_PERIOD;
+	connect(&timer, SIGNAL(timeout()), this, SLOT(compute()));'
+	//timer.start(Period);'
+	}else{
+	'Period = BASIC_PERIOD*1000;\n'
+	
+		
+	if(is_agent==true){
+'	iter = 0;
+	worldModel = AGMModel::SPtr(new AGMModel());\n'
+	}
+		
+	}
+'
+}
+
+/**
+* \\brief Default destructor
+*/
+GenericWorker::~GenericWorker()
+{
+
+}
+void GenericWorker::killYourSelf()
+{
+	rDebug("Killing myself");
+	emit kill();
+}
+/**
+* \\brief Change compute period
+* @param per Period in ms
+*/
+void GenericWorker::setPeriod(int p)
+{
+	rDebug("Period changed"+QString::number(p));
+	'
+	if(worker_thread == false){
+	'Period = p;
+	timer.start(Period);'
+	}else{
+	'Period = p*1000;'
+	}
+'
+}\n'
+
+if(is_agent==true){
+'	
+	RoboCompPlanning::Action GenericWorker::createAction(std::string s)  /// ESTO PODRIA ESTAR AUTOGENERADO
+	{
+		// Remove useless characters
+		char chars[]="()";
+	    for (unsigned int i=0; i<strlen(chars); ++i)
+		{
+			s.erase(std::remove(s.begin(), s.end(), chars[i]), s.end());
+		}
+	
+	    // Initialize string parsing
+		RoboCompPlanning::Action ret;
+		istringstream iss(s);
+	
+		// Get action (first segment)
+		if (not iss)
+		{
+			printf("agent %s: received invalid action (%s) -> (%d)\\n", PROGRAM_NAME, __FILE__, __LINE__);
+			exit(-1);
+		}
+		else
+		{
+			iss >> ret.name;
+		}
+	
+		do
+		{
+			std::string ss;
+			iss >> ss;
+			ret.symbols.push_back(ss);
+		} while (iss);
+	
+		return ret;
+	}	
+	
+	RoboCompAGMWorldModel::BehaviorResultType GenericWorker::status()
+	{
+		if (active)
+			return RoboCompAGMWorldModel::StatusActive;
+		return RoboCompAGMWorldModel::StatusIdle;
+	}
+	
+	bool GenericWorker::activate(const BehaviorNavegacionParameters &prs)
+	{
+		printf("Worker::activate\\n");
+		mutex->lock();
+		p = prs;
+		active = true;
+		iter = 0;
+		mutex->unlock();
+		return active;
+	}
+	
+	bool GenericWorker::deactivate() 
+	{
+		printf("Worker::deactivate\\n");
+		mutex->lock();
+		active = false;
+		iter = 0;
+		mutex->unlock();
+		return active;
+	}
+	
+	bool GenericWorker::setParametersAndPossibleActivation(const ParameterMap &prs, bool &reactivated)
+	{
+		// We didn\'t reactivate the component
+		reactivated = false;
+	
+		// Update parameters
+		for (ParameterMap::const_iterator it=prs.begin(); it!=prs.end(); it++)
+		{
+			params[it->first] = it->second;
+		}
+	
+		try
+		{
+			// Action
+			p.action = createAction(params["action"].value);
+	
+			// Fill received plan
+			p.plan.clear();
+			QStringList actionList = QString::fromStdString(params["plan"].value).split(QRegExp("[()]+"), QString::SkipEmptyParts);
+			for (int32_t actionString=0; actionString<actionList.size(); actionString++)
+			{
+				std::vector<string> elementsVec;
+				QStringList elements = actionList[actionString].remove(QChar(\'\\n\')).split(QRegExp("\\\\s+"), QString::SkipEmptyParts);
+				for (int32_t elem=0; elem<elements.size(); elem++)
+				{
+					elementsVec.push_back(elements[elem].toStdString());
+				}
+				p.plan.push_back(elementsVec);
+			}
+		}
+		catch (...)
+		{
+			return false;
+		}
+	
+		// Check if we should reactivate the component
+		if (isActive())
+		{
+			activate(p);
+			reactivated = true;
+		}
+	
+		return true;
+	}\n'
+}
+
+  }
+  
+  mdl.RComponent::crearSpecificWorker()
+  {
+  	//specificworker.h
+  	//file(fpath + "/" + self.name.toLower() + "/src/specificworker.h");
+  	file(fpath + "/src/specificworker.h");
+'/*
+ *    Copyright (C) 2006-2010 by RoboLab - University of Extremadura
+ *
+ *    This file is part of RoboComp
+ *
+ *    RoboComp is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    RoboComp is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with RoboComp.  If not, see <http://www.gnu.org/licenses/>.
+ */
+#ifndef SPECIFICWORKER_H
+#define SPECIFICWORKER_H
+
+#include <genericworker.h>
+
+/**
+       \\brief
+       @author authorname
+*/
+
+class SpecificWorker : public GenericWorker
+{
+Q_OBJECT
+public:
+'
+	if(gui_qt == true){
+'	SpecificWorker(MapPrx& mprx);'
+	}
+	else if(worker_thread == false){
+'	SpecificWorker(MapPrx& mprx, QObject *parent = 0);'
+	}
+	else{
+'	SpecificWorker(MapPrx& mprx, QThread *parent = 0);'	  
+	}
+'	
+	~SpecificWorker();
+	bool setParams(RoboCompCommonBehavior::ParameterList params);
+'
+	var list_params:List;
+	var is_generic:Boolean = false;
+	self.communications.servants->forEach(serv:mdl.Interfaz)
+	{
+	  	list_params.clear();
+	  	//list_params.add(serv.name + ".ice");
+		list_params.add(serv._getContainer().name + ".ice");
+		list_params.add(serv.name);
+		list_params.add(is_generic);
+		list_params.add(-1);
+		if(editor==false)
+			print(java("ImportIceFunctions","setImportIceFunctionstoWorker", list_params, "/home/adri/eclipseworkspace/dsl/bin"));
+		else
+			print(java("ImportIceFunctions","setImportIceFunctionstoWorker", list_params, getenv("JAVADSL")));
+	}
+	
+	sub_adapter_hash.keys()->forEach(name:String)
+	{  	
+	  	list_params.clear();	
+		var container_name:String = "";
+		self.communications.subscribes->forEach(sub:mdl.Interfaz){
+			if(sub.name.equalsIgnoreCase(name)==true){
+				container_name = sub._getContainer().name;
+				break;
+			}
+		}
+			  	
+	  	var n_sub:Integer = sub_adapter_hash.get(name);
+	  	if (n_sub != 0 && n_sub!=null){
+	  		var cont:Integer = 0;
+	  		while(cont<=n_sub){
+			  	list_params.add(container_name + ".ice");
+				list_params.add(name);
+				list_params.add(is_generic);
+				list_params.add(cont);	
+	  		  	println(java("ImportIceFunctions","setImportIceFunctionstoWorker", list_params, getenv("JAVADSL")));
+	  			cont = cont + 1;
+	  			list_params.clear();
+	  		}
+	  	}else{
+	  	  	list_params.add(container_name + ".ice");
+			list_params.add(name);
+			list_params.add(is_generic);
+			list_params.add(-1);	
+	  		println(java("ImportIceFunctions","setImportIceFunctionstoWorker", list_params, getenv("JAVADSL")));
+	  	}
+	}
+	
+	if(worker_thread == false){	
+'
+public slots:
+ 	void compute();'
+	}else{
+'	void run();'
+	}
+' 	
+};
+
+#endif'
+  
+  	//specifcworker.cpp
+  	//file(fpath + "/" + self.name.toLower()+"/src/specificworker.cpp");
+  	file(fpath + "/src/specificworker.cpp");
+'/*
+ *    Copyright (C) 2006-2010 by RoboLab - University of Extremadura
+ *
+ *    This file is part of RoboComp
+ *
+ *    RoboComp is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    RoboComp is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with RoboComp.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
+ #include "specificworker.h"
+
+/**
+* \\brief Default constructor
+*/
+'
+	if(gui_qt==true){
+'
+SpecificWorker::SpecificWorker(MapPrx& mprx) : GenericWorker(mprx)'
+	}else if(worker_thread == false){
+'
+SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mprx, parent)'
+	}else{
+'
+SpecificWorker::SpecificWorker(MapPrx& mprx, QThread *parent) : GenericWorker(mprx, parent)'
+	}
+
+'	
+{
+}
+
+/**
+* \\brief Default destructor
+*/
+SpecificWorker::~SpecificWorker()
+{
+
+}
+'
+	if(worker_thread == false){
+'void SpecificWorker::compute( )
+{
+}'
+	}else{
+'void SpecificWorker::run()
+{
+	forever
+	{
+		usleep(Period);
+	}
+}'	
+	}
+	
+'
+bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
+{
+	'  
+	if(worker_thread == false){
+	'timer.start(Period);'
+	}
+	else{
+	'this->start();'
+	}
+	'
+	return true;
+};'
+
+	var list_params:List;
+//implementar métodos heredados
+	self.communications.servants->forEach(serv:mdl.Interfaz)
+	{
+	  	list_params.clear();	
+		//list_params.add(sub.name + ".ice");
+		list_params.add(serv._getContainer().name + ".ice");
+		list_params.add(serv.name);
+		list_params.add(-1);
+		if(editor==false){
+			println(java("ImportIceFunctions","setImportIceFunctionstoSpecificWorker", list_params, "/home/adri/eclipseworkspace/dsl/bin"));
+		}else{
+			println(java("ImportIceFunctions","setImportIceFunctionstoSpecificWorker", list_params, getenv("JAVADSL")));
+		}
+	}
+
+    /*self.communications.subscribes->forEach(sub:mdl.Interfaz)
+	{
+	  	list_params.clear();	
+		//list_params.add(sub.name + ".ice");
+		list_params.add(sub._getContainer().name + ".ice");
+		list_params.add(sub.name);
+	  	if(editor==false){
+			println(java("ImportIceFunctions","setImportIceFunctionstoSpecificWorker", list_params, "/home/adri/eclipseworkspace/dsl/bin"));
+	  	}else{
+			println(java("ImportIceFunctions","setImportIceFunctionstoSpecificWorker", list_params, getenv("JAVADSL")));
+	  	}
+	}*/
+	
+	sub_adapter_hash.keys()->forEach(name:String)
+	{  	
+	  	list_params.clear();	
+		var container_name:String = "";
+		self.communications.subscribes->forEach(sub:mdl.Interfaz){
+			if(sub.name.equalsIgnoreCase(name)==true){
+				container_name = sub._getContainer().name;
+				break;
+			}
+		}
+			  	
+	  	var n_sub:Integer = sub_adapter_hash.get(name);
+	  	if (n_sub != 0 && n_sub!=null){
+	  		var cont:Integer = 0;
+	  		while(cont<=n_sub){
+			  	list_params.add(container_name + ".ice");
+				list_params.add(name);
+				list_params.add(cont);	
+	  		  	println(java("ImportIceFunctions","setImportIceFunctionstoSpecificWorker", list_params, getenv("JAVADSL")));
+	  			cont = cont + 1;
+	  			list_params.clear();
+	  		}
+	  	}else{
+	  	  	list_params.add(container_name + ".ice");
+			list_params.add(name);
+			list_params.add(-1);	
+	  		println(java("ImportIceFunctions","setImportIceFunctionstoSpecificWorker", list_params, getenv("JAVADSL")));
+	  	}
+	}
+	
+  }
+  
+  mdl.RComponent::crearSpecificMonitor(){
+    //specifmonitor.h
+  	//file(fpath + "/" + self.name.toLower()+"/src/specificmonitor.h");
+  	file(fpath + "/src/specificmonitor.h");
+'
+/*
+ *    Copyright (C) 2010 by RoboLab - University of Extremadura
+ *
+ *    This file is part of RoboComp
+ *
+ *    RoboComp is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    RoboComp is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with RoboComp.  If not, see <http://www.gnu.org/licenses/>.
+ */
+#ifndef SPECIFICMONITOR_H
+#define SPECIFICMONITOR_H
+
+#include "genericmonitor.h"
+
+/**
+       \\brief
+       @author authorname
+*/
+class SpecificMonitor : public GenericMonitor
+{
+  Q_OBJECT
+  
+  public:
+	SpecificMonitor(GenericWorker *_worker, Ice::CommunicatorPtr _communicator);
+	~SpecificMonitor();
+	
+	void readConfig(RoboCompCommonBehavior::ParameterList &params );
+	void run();
+	void initialize();
+    
+	bool sendParamsToWorker(RoboCompCommonBehavior::ParameterList params);
+	bool checkParams(RoboCompCommonBehavior::ParameterList l);
+};
+
+#endif // GENERICMONITOR_H
+'  
+
+	//specifcmonitor.cpp
+  	//file(fpath + "/" + self.name.toLower()+"/src/specificmonitor.cpp");
+  	file(fpath + "/src/specificmonitor.cpp");
+'
+/*
+ *    Copyright (C) 2010 by RoboLab - University of Extremadura
+ *
+ *    This file is part of RoboComp
+ *
+ *    RoboComp is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    RoboComp is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with RoboComp.  If not, see <http://www.gnu.org/licenses/>.
+ */
+#include "specificmonitor.h"
+/**
+* \\brief Default constructor
+*/
+SpecificMonitor::SpecificMonitor(GenericWorker *_worker,Ice::CommunicatorPtr _communicator):GenericMonitor(_worker, _communicator)
+{
+
+}
+/**
+* \\brief Default destructor
+*/
+SpecificMonitor::~SpecificMonitor()
+{
+
+}
+
+void SpecificMonitor::run()
+{
+	initialize();
+	forever
+	{
+		//rDebug("specific monitor run");
+		this->sleep(period);
+	}
+}
+
+/**
+ * \\brief Reads components parameters and checks set integrity before signaling the Worker thread to start running
+ * There can be four (4) types of parameteres:
+ *		(1) Ice parameters
+ *		(2) Nexus (configuration) parameters	
+ *		(3) Local component parameters read at start
+ *		(4) Local parameters read from other running component
+ *
+ */
+void SpecificMonitor::initialize()
+{
+	rInfo("Starting monitor ...");
+	initialTime=QTime::currentTime();
+	RoboCompCommonBehavior::ParameterList params;
+	readPConfParams(params);
+	readConfig(params);
+	if(!sendParamsToWorker(params))
+	{
+		rError("Error reading config parameters. Exiting");
+		killYourSelf();
+	}
+	state = RoboCompCommonBehavior::Running;
+}
+bool SpecificMonitor::sendParamsToWorker(RoboCompCommonBehavior::ParameterList params)
+{
+	if(checkParams(params))
+	{
+		//Set params to worker
+		if(worker->setParams(params)) 
+			return true;
+	}
+	else
+	{
+		rError("Incorrect parameters");
+	}
+	return false;
+
+}
+///Local Component parameters read at start
+///Reading parameters from config file or passed in command line, with Ice machinery
+///We need to supply a list of accepted values to each call
+void SpecificMonitor::readConfig(RoboCompCommonBehavior::ParameterList &params )
+{
+	//Read params from config file
+	//Example
+	    //RoboCompCommonBehavior::Parameter aux;
+	    //aux.editable = true;
+	    //configGetString( "DRobot.Device", aux.value,"/dev/ttyUSB0");
+	    //params["DRobot.Device"] = aux;
+}
+
+//comprueba que los parametros sean correctos y los transforma a la estructura del worker
+bool SpecificMonitor::checkParams(RoboCompCommonBehavior::ParameterList l)
+{
+	bool correct = true;
+	//Check parameters
+	//Example
+// 	    if(l["DRobot.Handler"].value != "Robex" and l["DRobot.Handler"].value != "Gazebo" and l["DRobot.Handler"].value != "Player")
+// 		    correct = false;
+	
+	//copy parameters
+// 	if(correct)
+// 		config_params = l;
+	return correct;
+}
+
+'	
+  }
+  
+  mdl.RComponent::crearProxyMonitor()
+  {
+    //monitor.h
+    //file(fpath + "/" + self.name.toLower() + "/src/genericmonitor.h");
+    file(fpath + "/src/genericmonitor.h");
+'/*
+ *    Copyright (C) 2010 by RoboLab - University of Extremadura
+ *
+ *    This file is part of RoboComp
+ *
+ *    RoboComp is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    RoboComp is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with RoboComp.  If not, see <http://www.gnu.org/licenses/>.
+ */
+#ifndef GENERICMONITOR_H
+#define GENERICMONITOR_H
+
+#include <Ice/Ice.h>
+#include <QtCore>
+#include "genericworker.h"
+#include "config.h"
+#include <qlog/qlog.h>
+#include <CommonBehavior.h>
+
+/**
+       \\brief
+       @author authorname
+*/
+class GenericMonitor : public QThread
+{
+  Q_OBJECT
+  
+  public:
+	GenericMonitor(GenericWorker *_worker, Ice::CommunicatorPtr _communicator);
+	virtual ~GenericMonitor();
+	
+	
+    //CommonBehavior
+	int getPeriod();
+	void setPeriod(int period);
+	void killYourSelf();
+	int timeAwake();
+	RoboCompCommonBehavior::ParameterList getParameterList();
+	void setParameterList(RoboCompCommonBehavior::ParameterList l);
+	RoboCompCommonBehavior::State getState();
+	
+	void readPConfParams(RoboCompCommonBehavior::ParameterList &params);
+	virtual void readConfig(RoboCompCommonBehavior::ParameterList &params ) = 0;
+	virtual void run() = 0;
+	virtual void initialize() = 0;
+	
+  protected:
+	int period;
+	GenericWorker *worker;
+	Ice::CommunicatorPtr communicator;
+	QTime initialTime;
+	RoboCompCommonBehavior::ParameterList config_params;
+	RoboCompCommonBehavior::State state;
+	
+	virtual bool sendParamsToWorker(RoboCompCommonBehavior::ParameterList params) = 0;
+	virtual bool checkParams(RoboCompCommonBehavior::ParameterList l) = 0;
+	
+	bool configGetString( const std::string name, std::string &value,  const std::string default_value, QStringList *list = NULL);
+  signals:
+	void kill();
+};
+
+#endif // GENERICMONITOR_H'
+
+	//monitor.cpp
+	//file(fpath + "/" + self.name.toLower() + "/src/genericmonitor.cpp");
+	file(fpath + "/src/genericmonitor.cpp");
+'/*
+ *    Copyright (C) 2010 by RoboLab - University of Extremadura
+ *
+ *    This file is part of RoboComp
+ *
+ *    RoboComp is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    RoboComp is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with RoboComp.  If not, see <http://www.gnu.org/licenses/>.
+ */
+#include "genericmonitor.h"
+/**
+* \\brief Default constructor
+*/
+GenericMonitor::GenericMonitor(GenericWorker *_worker,Ice::CommunicatorPtr _communicator)
+{
+	worker = _worker;
+	this->communicator = _communicator;
+	period = 100;
+	state = RoboCompCommonBehavior::Starting;
+}
+/**
+* \\brief Default destructor
+*/
+GenericMonitor::~GenericMonitor()
+{
+
+}
+
+/**
+* \\brief Get component execution state
+* @return State Component state
+*/
+RoboCompCommonBehavior::State GenericMonitor::getState()
+{
+	return state;
+}
+
+/**
+* \\brief Get worker period
+* @return int Worker period in ms
+*/
+int GenericMonitor::getPeriod()
+{
+	return period;
+}
+/**
+* \\brief Change worker period
+* @param per Period in ms
+*/
+void GenericMonitor::setPeriod(int _period)
+{
+	worker->setPeriod(_period);
+	period =_period;
+}
+/**
+* \\brief Kill component
+*/
+void GenericMonitor::killYourSelf()
+{
+	rDebug("Killing myself");
+	worker->killYourSelf();
+	emit kill();
+	
+}
+/**
+* \\brief Get Component time awake
+* @return int Time alive in seconds
+*/
+int GenericMonitor::timeAwake()
+{
+	return initialTime.secsTo(QTime::currentTime());
+}
+/**
+* \\brief Return components parameters
+* @return  AttrList Configuration parameters list
+*/
+RoboCompCommonBehavior::ParameterList GenericMonitor::getParameterList() 
+{ 
+	return config_params;
+}
+/**
+* \\brief Change configurations parameters to worker
+* @param l Configuration parameters list
+*/
+void GenericMonitor::setParameterList(RoboCompCommonBehavior::ParameterList l) 
+{ 
+	rInfo("Changing configuration params");
+	sendParamsToWorker(l);
+}
+
+/**
+* \\brief Read parameters from pconf file. This method will be empty if there is not any pconf file available.
+* @param l Configuration parameters list
+*/
+void GenericMonitor::readPConfParams(RoboCompCommonBehavior::ParameterList &params)
+{
+	//nothing to do
+}
+
+//Ice Methods to read from file 
+//name, parameter config value
+//return value of parameter config 
+//default value for the parameter
+//return false if the parameter does not exist. Throw exception in other case.
+//if you need one parameter mandatory you can pass empty string in default_value
+bool GenericMonitor::configGetString( const std::string name, std::string&value,  const std::string default_value, QStringList *list)
+{
+	value = communicator->getProperties()->getProperty( name );
+
+	if ( value.length() == 0)
+	{
+	   	if (default_value.length() != 0)
+		{
+			value = default_value;
+			return false;
+		}
+		else if (default_value.length() == 0)
+		{
+			QString error = QString("empty configuration string, not default value for")+QString::fromStdString(name);
+			qDebug() << error;
+			throw error;
+		}
+	}
+
+	if (list != NULL)
+	{
+		if (list->contains(QString::fromStdString(value)) == false)
+		{
+			qFatal("Reading config file: %s is not a valid string", name.c_str());
+			rError("Reading config file:"+name+" is not a valid string");
+		}
+		QString error = QString("not valid configuration value");
+		qDebug() << error;
+		throw error;
+	}
+
+	std::cout << name << " " << value << std::endl;
+	return true; 
+}'
+
+
+/*//Ice Methods to read from file
+bool GenericMonitor::configGetString( const std::string name, std::string &value,  const std::string default_value, QStringList *list)
+{
+	value = communicator->getProperties()->getProperty( name );
+	if ( value.length() == 0)
+	{
+		value = default_value;
+		return false;
+	}
+	std::cout << name << " " << value << std::endl;
+	return true;
+}'*/
+
+  }
+  
+  mdl.RComponent::setQtVersion(){
+  
+	if(self.qtversion.oclIsTypeOf(mdl.Qt4)==true){
+		qt_version = "Qt4";
+	}
+	else if(self.qtversion.oclIsTypeOf(mdl.Qt5)==true){
+		qt_version = "Qt5";
+	}
+	//...
+	
+  }
+  
+  mdl.RComponent::setQtInterface(){
+  
+	if(self.gui.oclIsTypeOf(mdl.Qt)==true){
+	  	var qtinterface:mdl.QtInterface = self.gui._getFeature("qtinterface");
+	  	if(qtinterface.oclIsTypeOf(mdl.QDialog)==true){
+			qt_type = "QDialog";
+	  	}
+	  	else if(qtinterface.oclIsTypeOf(mdl.QFrame)==true){
+			qt_type = "QFrame";
+	  	}
+	  	else if(qtinterface.oclIsTypeOf(mdl.QMainWindow)==true){
+			qt_type = "QMainWindow";
+	  	}
+	  	else if(qtinterface.oclIsTypeOf(mdl.QWidget)==true){
+			qt_type = "QWidget";
+	  	}
+	}
+  }
+  
+  mdl.RComponent::crearGuiDlg()
+  {    
+    if(self.existeFichero("src", "guiDlg.ui")==false){
+	//file(fpath + "/" + self.name.toLower() + "/src/guiDlg.ui");
+	file(fpath + "/src/guiDlg.ui");
+'<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>guiDlg</class>
+ <widget class="'qt_type'" name="guiDlg">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
+'	
+    }//if existe guiDlg.ui
+  }
+  
+  mdl.RComponent::crearInterfazCommonBehavior()
+  {
+    // commonbehavior.h 
+    //file(fpath + "/" + self.name.toLower() + "/src/commonbehaviorI.h");
+    file(fpath + "/src/commonbehaviorI.h");
+'/*
+ *    Copyright (C) 2006-2010 by RoboLab - University of Extremadura
+ *
+ *    This file is part of RoboComp
+ *
+ *    RoboComp is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    RoboComp is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with RoboComp.  If not, see <http://www.gnu.org/licenses/>.
+ */
+#ifndef COMMONBEHAVIORI_H
+#define COMMONBEHAVIORI_H
+
+// QT includes
+#include <QtCore/QObject>
+
+// Ice includes
+#include <Ice/Ice.h>
+#include <CommonBehavior.h>
+
+#include <config.h>
+
+#include "genericworker.h"
+#include "genericmonitor.h"
+
+using namespace RoboCompCommonBehavior;
+/**
+	\\class CommonBehaviorI <p>Servant for components common behaviors. This class implements the methods of the public interface of CommonBehavior.
+*/
+class CommonBehaviorI : public QObject , public virtual RoboCompCommonBehavior::CommonBehavior
+{
+Q_OBJECT
+public:
+	CommonBehaviorI( GenericMonitor *_monitor, QObject *parent = 0 );
+	~CommonBehaviorI();
+
+	int getPeriod( const Ice::Current & = Ice::Current());
+	void setPeriod(int period, const Ice::Current & = Ice::Current());
+	int timeAwake( const Ice::Current & = Ice::Current());
+	void killYourSelf( const Ice::Current & = Ice::Current());
+	ParameterList getParameterList( const Ice::Current & = Ice::Current());
+	void setParameterList(const RoboCompCommonBehavior::ParameterList &l, const Ice::Current & = Ice::Current());
+	void reloadConfig( const Ice::Current& = Ice::Current());
+	RoboCompCommonBehavior::State getState(const Ice::Current& = Ice::Current());
+// 	QMutex *mutex;
+private:
+
+	GenericMonitor *monitor;	///*<monitor Pointer to access monitor methods. It\'s used to set or read component configuration.
+public slots:
+
+
+};
+
+#endif'
+
+    // commonbehavior.cpp    
+    //file(fpath + "/" + self.name.toLower() + "/src/commonbehaviorI.cpp");
+    file(fpath + "/src/commonbehaviorI.cpp");
+'/*
+ *    Copyright (C) 2006-2010 by RoboLab - University of Extremadura
+ *
+ *    This file is part of RoboComp
+ *
+ *    RoboComp is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    RoboComp is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with RoboComp.  If not, see <http://www.gnu.org/licenses/>.
+ */
+#include "commonbehaviorI.h"
+/**
+* \\brief Default constructor
+*/
+CommonBehaviorI::CommonBehaviorI(GenericMonitor *_monitor, QObject *parent) : QObject(parent)
+{
+	monitor = _monitor;
+	//mutex = worker->mutex;       // Shared worker mutex
+	// Component initialization...
+}
+
+/**
+* \\brief Default destructor
+*/
+CommonBehaviorI::~CommonBehaviorI()
+{
+	// Free component resources here
+}
+
+// Component functions, implementation
+/**
+* \\brief Return compute period in ms
+* @return Compute period in ms
+*/
+int CommonBehaviorI::getPeriod( const Ice::Current&) 
+{ 
+	return monitor->getPeriod();
+}
+/**
+* \\brief Change compute period
+* @param per Period in ms
+*/
+void CommonBehaviorI::setPeriod(int period, const Ice::Current&) 
+{
+	monitor->setPeriod(period);
+}
+/**
+* \\brief Get Component time awake
+* @return int Time alive in seconds
+*/
+int CommonBehaviorI::timeAwake( const Ice::Current&) 
+{ 
+	return monitor->timeAwake();
+}
+/**
+* \\brief Kill component
+*/
+void CommonBehaviorI::killYourSelf( const Ice::Current&) 
+{
+	monitor->killYourSelf();
+}
+/**
+* \\brief Return components parameters
+* @return  AttrList Configuration parameters list
+*/
+ParameterList CommonBehaviorI::getParameterList( const Ice::Current&) 
+{ 
+	return monitor->getParameterList();
+}
+/**
+* \\brief Change configurations parameters to worker
+* @param l Configuration parameters list
+*/
+void CommonBehaviorI::setParameterList(const RoboCompCommonBehavior::ParameterList &l, const Ice::Current&) 
+{ 
+	monitor->setParameterList(l);
+}
+void CommonBehaviorI::reloadConfig( const Ice::Current&)
+{
+	//monitor->readConfig();
+}
+/**
+* \\brief Get component execution state
+* @return State Component state
+*/
+RoboCompCommonBehavior::State CommonBehaviorI::getState(const Ice::Current&)
+{
+	return monitor->getState();
+}'
+  }
+  
+  mdl.RComponent::crearCMakeListSrc()
+  {
+    
+    var name_to_lower:String = self.name.toLower();
+	//file(fpath + "/" + name_to_lower + "/src/CMakeLists.txt");
+	file(fpath + "/src/CMakeLists.txt");
+	
+//PROJECT( 'name_to_lower'Comp )	
+'cmake_minimum_required(VERSION 2.6)
+PROJECT( 'name_to_lower' )
+IF(NOT EXISTS $ENV{ROBOCOMP}/cmake)
+MESSAGE(FATAL_ERROR "\n ROBOCOMPROOT variable not set, check your bashrc profile!\n")
+ENDIF(NOT EXISTS $ENV{ROBOCOMP}/cmake)
+INCLUDE( $ENV{ROBOCOMP}/cmake/robocomp.cmake )
+INCLUDE ( CMakeListsSpecific.txt)
+
+# Sources set
+SET ( SOURCES
+  ${SOURCES}
+  'name_to_lower'.cpp
+  '//name_to_lower'Comp.cpp
+  self.communications.servants->forEach(serv:mdl.Interfaz)
+  {
+  	//if(serv.exist == false)
+  	//{
+  		//si no existe se genera vacío. (Hay que crear .ice)
+		serv.name.toLower()'I.cpp\n'
+  	//}
+  	//else{
+  		//buscar en SLICE_PATH el .ice y sacar las operaciones (usar Java)
+  	//}	
+  }
+  self.communications.subscribes->forEach(sub:mdl.Interfaz)
+  {
+  	//if(serv.exist == false)
+  	//{
+  		//si no existe se genera vacío. (Hay que crear .ice)
+		sub.name.toLower()'I.cpp\n'
+  	//}
+  	//else{
+  		//buscar en SLICE_PATH el .ice y sacar las operaciones (usar Java)
+  	//}	
+  }
+  self.classes.classname->forEach(class:String)
+  {
+    if(class.contains(".cpp")==true){
+  '
+  $ENV{ROBOCOMP}'class
+  	}
+  }
+  //Classes -> classes
+  '
+  genericmonitor.cpp
+  commonbehaviorI.cpp
+  genericworker.cpp
+  $ENV{ROBOCOMP}/classes/rapplication/rapplication.cpp
+  $ENV{ROBOCOMP}/classes/qlog/qlog.cpp
+)
+
+# Headers set
+SET ( HEADERS
+  ${HEADERS}
+  '
+  self.communications.servants->forEach(serv:mdl.Interfaz)
+  {
+  	//if(serv.exist == false)
+  	//{
+  		//si no existe se genera vacío. (Hay que crear .ice)
+  		serv.name.toLower()'I.h\n'  
+  	//}
+  	//else{
+  		//buscar en SLICE_PATH el .ice y sacar las operaciones (usar Java)
+  	//}	
+  }
+  
+  self.communications.subscribes->forEach(sub:mdl.Interfaz)
+  {
+  	//if(serv.exist == false)
+  	//{
+  		//si no existe se genera vacío. (Hay que crear .ice)
+  		sub.name.toLower()'I.h\n'  
+  	//}
+  	//else{
+  		//buscar en SLICE_PATH el .ice y sacar las operaciones (usar Java)
+  	//}	
+  }
+  self.classes.classname->forEach(class:String)
+  {
+    if(class.contains(".h")==true){
+  '
+  $ENV{ROBOCOMP}'class
+  	}
+  }
+  
+  '
+  genericmonitor.h
+  commonbehaviorI.h
+  genericworker.h
+)
+#ROBOCOMP
+ROBOCOMP_INITIALIZE( $ENV{ROBOCOMP}/ )
+'
+    //nombre del module
+    
+	//REMOTE PROXIES IN CMake, se buscan en el SLICE_PATH
+	var proxies_src:String ="";
+	self.communications.proxies->forEach(prx:mdl.Interfaz)
+	{
+	 //   var interface_container:mdl.Interfaces = prx._getContainer();
+	  	if(editor==false)
+			proxies_src = proxies_src + " " + prx._getContainer().name.replace("RoboComp","") + java("BuscarDependencias","setBuscarDependencias", prx._getContainer().name + ".ice", "/home/adri/eclipseworkspace/dsl/bin");
+		else
+			proxies_src = proxies_src + " " + prx._getContainer().name.replace("RoboComp","") + java("BuscarDependencias","setBuscarDependencias", prx._getContainer().name + ".ice", getenv("JAVADSL"));
+	}
+	self.communications.publishes->forEach(pub:mdl.Interfaz)
+	{
+		if(editor==false)
+			proxies_src = proxies_src + " " + pub._getContainer().name.replace("RoboComp","") + java("BuscarDependencias","setBuscarDependencias", pub._getContainer().name + ".ice", "/home/adri/eclipseworkspace/dsl/bin");
+		else
+			proxies_src = proxies_src + " " + pub._getContainer().name.replace("RoboComp","") + java("BuscarDependencias","setBuscarDependencias", pub._getContainer().name + ".ice", getenv("JAVADSL"));
+	}
+	//Proxies needed IN CMake, se buscan en el SLICE_PATH
+	var srv_src:String ="";
+	self.communications.servants->forEach(srv:mdl.Interfaz)
+	{
+		//proxies_src = proxies_src + " " + prx.name + java("BuscarDependencias","setBuscarDependencias", "C:\\" + prx.name + ".ice", "D:\\eclipse-modeling-helios-SR1-incubation-win32\\DSL\\bin");
+		if(editor==false)
+			srv_src = srv_src + " " + srv._getContainer().name.replace("RoboComp","") + java("BuscarDependencias","setBuscarDependencias", srv._getContainer().name + ".ice", "/home/adri/eclipseworkspace/dsl/bin");
+		else
+			srv_src = srv_src + " " + srv._getContainer().name.replace("RoboComp","") + java("BuscarDependencias","setBuscarDependencias", srv._getContainer().name + ".ice", getenv("JAVADSL"));
+	}
+	self.communications.subscribes->forEach(sub:mdl.Interfaz)
+	{
+		//proxies_src = proxies_src + " " + prx.name + java("BuscarDependencias","setBuscarDependencias", "C:\\" + prx.name + ".ice", "D:\\eclipse-modeling-helios-SR1-incubation-win32\\DSL\\bin");
+		if(editor==false)
+			srv_src = srv_src + " " + sub._getContainer().name.replace("RoboComp","") + java("BuscarDependencias","setBuscarDependencias", sub._getContainer().name + ".ice", "/home/adri/eclipseworkspace/dsl/bin");
+		else
+			srv_src = srv_src + " " + sub._getContainer().name.replace("RoboComp","") + java("BuscarDependencias","setBuscarDependencias", sub._getContainer().name + ".ice", getenv("JAVADSL"));
+	}
+	var params:List;
+	params.add(proxies_src);
+	params.add(srv_src);
+	
+	if(editor == false){
+'ROBOCOMP_WRAP_ICE( CommonBehavior 'java("BuscarDependencias","eliminarRepetidos",params , "/home/adri/eclipseworkspace/dsl/bin");')'
+	}else{
+'ROBOCOMP_WRAP_ICE( CommonBehavior 'java("BuscarDependencias","eliminarRepetidos",params , getenv("JAVADSL"));')'
+	}
+'
+SET (EXECUTABLE_OUTPUT_PATH ../bin)
+'
+	var mod:String;
+  	self.modules.modulename->forEach(m:String)
+  	{
+  	  	mod = m.toLower();
+  	  	if(self.existModule(mod)==true){
+'
+# 'mod'
+INCLUDE ($ENV{ROBOCOMP}/CMake/'mod'.cmake )'
+  	  	
+  	  	}
+  	  	
+  	}
+  	if(qt_version.equals("Qt4")==true){
+'
+# Qt4
+ADD_DEFINITIONS( -Wall -DQT_DLL -DQT_GUI_LIB -DQT_CORE_LIB )
+FIND_PACKAGE( Qt4 REQUIRED )
+SET( QT_USE_QTGUI TRUE )
+SET( QT_USE_QTOPENGL TRUE )
+SET( QT_USE_QTXML TRUE )
+SET( QT_USE_QTSTATE TRUE )
+SET( QT_USE_QTSTATEMACHINE TRUE )
+INCLUDE( ${QT_USE_FILE} )
+QT4_WRAP_CPP( MOC_SOURCES ${HEADERS} )
+'
+		if(gui_qt==true){
+'QT4_WRAP_UI( UI_HEADERS guiDlg.ui )'
+		}
+  	}
+  	else if(qt_version.equals("Qt5")==true){
+'# Qt5
+ADD_DEFINITIONS( -Wall -DQT_DLL -DQT_GUI_LIB -DQT_CORE_LIB -fPIC)
+FIND_PACKAGE( Qt5Widgets REQUIRED )
+SET(CMAKE_AUTOMOC ON)
+'
+		if(gui_qt==true){
+'QT5_WRAP_UI( UI_HEADERS guiDlg.ui )'
+		}
+  	}
+'
+# Specify construction and link process
+ADD_EXECUTABLE( 'name_to_lower' ${SOURCES} ${MOC_SOURCES} ${RC_SOURCES} ${UI_HEADERS} )'
+	if(qt_version.equals("Qt5")==true){
+'
+qt5_use_modules( 'name_to_lower' Widgets)'	
+	}
+'
+TARGET_LINK_LIBRARIES( 'name_to_lower' ${QT_LIBRARIES} ${LIBS} ${STATIC_LIBS} ${SPECIFIC_LIBS})'
+'
+INSTALL(FILES ${EXECUTABLE_OUTPUT_PATH}/'self.name.toLower()' DESTINATION /opt/robocomp/bin/ PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE )'
+  }
+  
+  mdl.RComponent::crearSpecificCMakeList()
+  {
+  	var name_to_lower:String = self.name.toLower();
+	//file(fpath + "/" + name_to_lower + "/src/CMakeListsSpecific.txt");
+	file(fpath + "/src/CMakeListsSpecific.txt");  
+	
+if(is_agent==true){
+'
+SET(LIBS ${LIBS} -lagm)'
+}	
+	
+'
+# Sources set
+SET ( SOURCES
+  specificworker.cpp
+  specificmonitor.cpp
+)
+
+# Headers set
+SET ( HEADERS
+  specificworker.h
+  specificmonitor.h
+)
+'
+  }
+  
+  mdl.RComponent::crearFicheroConfigSrc()
+  {
+    file(fpath + "/src/config.h");
+'#ifndef CONFIG_H
+#define CONFIG_H
+
+// Comment out this line if your application has a QtGui
+'
+if(gui_qt == true)
+'#define USE_QTGUI
+'
+else
+'//#define USE_QTGUI
+'
+'#define PROGRAM_NAME    "'self.name'"
+#define SERVER_FULL_NAME   "RoboComp'self.name'::'self.name'"
+
+#endif'
+  }
+  
+  mdl.RComponent::existModule(String fileName):Boolean{
+  	//var pathFile:String = fpath + "/" + self.name.toLower() + "/src/" + fileName;
+  	var pathFile:String;
+  	var exists:Boolean;
+    if(editor == false){
+      	pathFile = "/home/adri/Escritorio/RoboComp-svn/robocomp/CMake/" + fileName + ".cmake";
+    	exists = java("Entorno", "existsFile" , pathFile, "/home/adri/eclipseworkspace/dsl/bin");
+    }else{
+      	pathFile = getenv("ROBOCOMP") + "/CMake/" + fileName + ".cmake";
+    	exists = java("Entorno", "existsFile" , pathFile, getenv("JAVADSL"));
+    }
+    return exists;
+  }
+  
+  /*
+   * fichero generic_config
+   */
+  mdl.RComponent::crearFicheroConfig()
+  {
+    var name_to_lower:String = self.name.toLower();
+  	//file(fpath + "/" + name_to_lower+"/etc/config");
+  	file(fpath + "/etc/generic_config");
+'#
+# This property is used to configure the endpoints of the subscriber adapter.
+#
+'
+	var params:List;
+	self.communications.servants->forEach(srv:mdl.Interfaz){
+		params.add("/files/components-port.txt");
+		params.add(srv.name+"Comp");
+		if(editor == false)
+			name_port_config = java("PuertoProxy","setPort", params, "/home/adri/eclipseworkspace/dsl/bin");
+		else	
+			name_port_config = java("PuertoProxy","setPort", params, getenv("JAVADSL"));
+   		 //name_port_config = java("PuertoProxy","setPort", params, "./dslJava/bin");
+   	 	println(name_port_config);
+   	 	params.clear();
+	}//foreach servants
+	
+	self.communications.proxies->forEach(prx:mdl.Interfaz){
+		params.add("/files/components-port.txt");
+		params.add(prx.name+"Comp");
+		if(editor == false)
+			name_port_config = java("PuertoProxy","setPort", params, "/home/adri/eclipseworkspace/dsl/bin");
+		else	
+			name_port_config = java("PuertoProxy","setPort", params, getenv("JAVADSL"));
+   		 //name_port_config = java("PuertoProxy","setPort", params, "./dslJava/bin");
+   	 	//println(name_port_config);
+   	 	params.clear();
+	}//foreach prx
+	
+	
+	params.add("/files/components-port.txt");
+	params.add(self.name);
+	var commonport:String;
+	if(editor ==false){
+		commonport = java("PuertoProxy","getPortCommon", params, "/home/adri/eclipseworkspace/dsl/bin");
+	}
+	else{
+		commonport = java("PuertoProxy","getPortCommon", params, getenv("JAVADSL"));
+	} 
+'CommonBehavior.Endpoints=tcp -p 'commonport'\n'
+
+	sub_adapter_hash.keys()->forEach(name:String)
+	{  	
+	  	var n_sub:Integer = sub_adapter_hash.get(name);
+	  	var params:List;
+	  	if (n_sub != 0 && n_sub!=null){
+	  	  	var cont:Integer = 0;
+			while(cont<=n_sub){
+	  	  		params.add("/files/components-port.txt");
+	  	  		params.add(name + cont);
+	  	  		java("PuertoProxy","setPortTopic", params, getenv("JAVADSL"))'\n'
+	  	  		cont = cont + 1;
+	  	  		params.clear();
+	  		}		
+	  	}else{
+	  	  	params.add("/files/components-port.txt");
+	  	  	params.add(name);
+			java("PuertoProxy","setPortTopic", params, getenv("JAVADSL"))'\n'
+	  	}
+	}
+	
+	
+'
+# Remote servers proxies example
+#RemoteProxy = remote:tcp -h remotehost -p 10001
+
+'
+	proxies_hash.keys()->forEach(prx:String)
+	{  	
+	  	var n_proxies:Integer = proxies_hash.get(prx);
+	  	var params:List;
+		params.add("/files/components-port.txt");
+		params.add(prx + "Comp");
+	  	if (n_proxies != 0 && n_proxies!=null){
+	  		var cont:Integer = 0;
+	  		while(cont<=n_proxies){
+	  		  	println(prx + cont + "Proxy = " + prx.toLower() + ":tcp -h localhost -p " + java("PuertoProxy","getPort", params, getenv("JAVADSL")));
+	  			cont = cont + 1;
+	  		}
+	  	}else{
+			prx'Proxy = ' prx.toLower()':tcp -h localhost -p 'java("PuertoProxy","getPort", params, getenv("JAVADSL"))'\n'
+	  	}
+	}
+
+	if(self.communications.publishes.isEmpty() == false || self.communications.subscribes.isEmpty() == false){
+'
+#
+# This property is used by the clients to connect to IceStorm.
+#
+TopicManager.Proxy=IceStorm/TopicManager:default -p 9999
+'
+	}
+	
+	if(self.communications.publishes.isEmpty() == false){
+'
+#
+# Topics ID
+#
+'	
+	}
+	
+	pub_proxies_hash.keys()->forEach(prx:String)
+	{  	
+	  	var n_proxies:Integer = pub_proxies_hash.get(prx);
+	  	if (n_proxies != 0 && n_proxies!=null){
+	  		var cont:Integer = 0;
+	  		while(cont<=n_proxies){
+	  		  	println(prx + cont + "=" + prx + cont);
+	  			cont = cont + 1;
+	  		}
+	  	}else{
+			println(prx + "=" + prx);
+	  	}
+	}
+	
+
+
+  }
+
+  /*
+   * fichero generic_config.debug
+   */
+
+  mdl.RComponent::crearFicheroConfigDebug()
+  {
+    var name_to_lower:String = self.name.toLower();
+    //file(fpath + "/" + name_to_lower+"/etc/config.debug");
+    file(fpath + "/etc/generic_config.debug");
+      	
+'# Debug config file
+
+#
+# This property is used to configure the endpoints of the subscriber adapter.
+#
+'
+	var params:List;
+	self.communications.servants->forEach(srv:mdl.Interfaz){
+		params.add("/files/components-port.txt");
+		params.add(srv.name+"Comp");
+		if(editor == false)
+			name_port_config = java("PuertoProxy","setPort", params, "/home/adri/eclipseworkspace/dsl/bin");
+		else	
+			name_port_config = java("PuertoProxy","setPort", params, getenv("JAVADSL"));
+   		 //name_port_config = java("PuertoProxy","setPort", params, "./dslJava/bin");
+   	 	println(name_port_config);
+   	 	params.clear();
+	}//foreach servants
+	self.communications.proxies->forEach(prx:mdl.Interfaz){
+		params.add("/files/components-port.txt");
+		params.add(prx.name+"Comp");
+		if(editor == false)
+			name_port_config = java("PuertoProxy","setPort", params, "/home/adri/eclipseworkspace/dsl/bin");
+		else	
+			name_port_config = java("PuertoProxy","setPort", params, getenv("JAVADSL"));
+   		 //name_port_config = java("PuertoProxy","setPort", params, "./dslJava/bin");
+   	 	//println(name_port_config);
+   	 	params.clear();	
+	}//foreach proxies
+	
+	params.add("/files/components-port.txt");
+	params.add(self.name);
+	var commonport:String;
+	if(editor ==false){
+		commonport = java("PuertoProxy","getPortCommon", params, "/home/adri/eclipseworkspace/dsl/bin");
+	}
+	else{
+		commonport = java("PuertoProxy","getPortCommon", params, getenv("JAVADSL"));
+	} 
+'CommonBehavior.Endpoints=tcp -p 'commonport'\n'
+
+	sub_adapter_hash.keys()->forEach(name:String)
+	{  	
+	  	var n_sub:Integer = sub_adapter_hash.get(name);
+	  	var params:List;
+	  	if (n_sub != 0 && n_sub!=null){
+	  	  	var cont:Integer = 0;
+			while(cont<=n_sub){
+	  	  		params.add("/files/components-port.txt");
+	  	  		params.add(name + cont);
+	  	  		java("PuertoProxy","setPortTopic", params, getenv("JAVADSL"))'\n'
+	  	  		cont = cont + 1;
+	  	  		params.clear();
+	  		}		
+	  	}else{
+	  	  	params.add("/files/components-port.txt");
+	  	  	params.add(name);
+			java("PuertoProxy","setPortTopic", params, getenv("JAVADSL"))'\n'
+	  	}
+	}
+'
+# Remote servers proxies example
+#RemoteProxy = remote:tcp -h remotehost -p 10001
+
+'
+	proxies_hash.keys()->forEach(prx:String)
+	{  	
+	  	var n_proxies:Integer = proxies_hash.get(prx);
+	  	var params:List;
+		params.add("/files/components-port.txt");
+		params.add(prx + "Comp");
+	  	if (n_proxies != 0 && n_proxies!=null){
+	  		var cont:Integer = 0;
+	  		while(cont<=n_proxies){
+	  		  	println(prx + cont + "Proxy = " + prx.toLower() + ":tcp -h localhost -p " + java("PuertoProxy","getPort", params, getenv("JAVADSL")));
+	  			cont = cont + 1;
+	  		}
+	  	}else{
+			prx'Proxy = ' prx.toLower()':tcp -h localhost -p 'java("PuertoProxy","getPort", params, getenv("JAVADSL"))'\n'
+	  	}
+	}
+	
+	/*self.communications.publishes->forEach(pub:mdl.Interfaz)
+	{
+	  	var params:List;
+		params.add("/files/components-port.txt");
+		params.add(pub.name+"Topic");
+		if(editor==false)
+			pub.name 'Proxy = ' pub.name.toLower()':tcp -h localhost -p 'java("PuertoProxy","getPort", params, "/home/adri/eclipseworkspace/dsl/bin")'\n'		
+		else
+			pub.name 'Proxy = ' pub.name.toLower()':tcp -h localhost -p 'java("PuertoProxy","getPort", params, getenv("JAVADSL"))'\n'
+	}*/
+
+if(self.communications.publishes.isEmpty() == false || self.communications.subscribes.isEmpty() == false){
+'
+#
+# This property is used by the clients to connect to IceStorm.
+#
+TopicManager.Proxy=DemoIceStorm/TopicManager:default -p 10000
+'
+	if(self.communications.publishes.isEmpty() == false){
+'
+#
+# Topics ID
+#
+'	
+	}
+	
+	pub_proxies_hash.keys()->forEach(prx:String)
+	{  	
+	  	var n_proxies:Integer = pub_proxies_hash.get(prx);
+	  	if (n_proxies != 0 && n_proxies!=null){
+	  		var cont:Integer = 0;
+	  		while(cont<=n_proxies){
+	  		  	println(prx + cont + "=" + prx + cont);
+	  			cont = cont + 1;
+	  		}
+	  	}else{
+			println(prx + "=" + prx);
+	  	}
+	}
+	
+
+}
+  }
+
+  mdl.RComponent::crearFicheroConfigIce(){
+    file(fpath + "/etc/specific_config");
+'#############################
+### Ice-related properties ##
+#############################
+# Warn about connection exceptions
+Ice.Warn.Connections=0
+# Network Tracing: (0: no network tracing; 1: trace connection establishment and closure; 2: like 1, but more detailed; 3: like 2, but also trace data transfer).
+Ice.Trace.Network=0
+# Protocol Tracing: (0: no protocol tracing; 1: trace protocol messages)
+Ice.Trace.Protocol=0
+
+# Faster ACM
+Ice.ACM.Client=10
+Ice.ACM.Server=10'  
+  }
+  
+  mdl.RComponent::crearFicheroConfigIceDebug(){
+    file(fpath + "/etc/specific_config.debug");
+'##################################
+## Ice-related debug properties ##
+##################################
+#
+#
+# Warn about connection exceptions
+#
+Ice.Warn.Connections=1
+
+#
+#
+# Network Tracing
+#
+# 0 = no network tracing
+# 1 = trace connection establishment and closure
+# 2 = like 1, but more detailed
+# 3 = like 2, but also trace data transfer
+#
+Ice.Trace.Network=3
+
+#
+# Protocol Tracing
+#
+# 0 = no protocol tracing
+# 1 = trace protocol messages
+#
+Ice.Trace.Protocol=1
+
+#
+# We want a faster ACM
+#
+Ice.ACM.Client=10
+Ice.ACM.Server=10'
+  
+  }
+  
+  
+  mdl.Component::crearCMakeList()
+  {
+  	//file(fpath + "/" + self.name.toLower()+"/CMakeLists.txt");
+  	file(fpath + "/CMakeLists.txt");
+'cmake_minimum_required( VERSION 2.6 )
+
+SUBDIRS( src )
+
+INSTALL(FILES etc/config DESTINATION /opt/robocomp/etc-default/ RENAME 'self.name.toLower()'.conf )
+
+ADD_CUSTOM_TARGET(doc doxygen Doxyfile)
+ADD_CUSTOM_TARGET(installdoc mkdir -p /opt/robocomp/doc COMMAND cp -R doc/html /opt/robocomp/doc/'self.name.toLower()' )'
+//ADD_CUSTOM_TARGET(installdoc mkdir -p /opt/robocomp/doc COMMAND cp -R doc/html /opt/robocomp/doc/'self.name.toLower()'Comp )'
+  }
+  
+  mdl.Component::crearDoxyFile()
+  { 
+    //file(fpath + "/" + self.name.toLower()+"/DoxyFile");
+    file(fpath + "/DoxyFile");
+'# Doxyfile 1.6.1
+
+# This file describes the settings to be used by the documentation system
+# doxygen (www.doxygen.org) for a project
+#
+# All text after a hash (#) is considered a comment and will be ignored
+# The format is:
+#       TAG = value [value, ...]
+# For lists items can also be appended using:
+#       TAG += value [value, ...]
+# Values that contain spaces should be placed between quotes (" ")
+
+#---------------------------------------------------------------------------
+# Project related configuration options
+#---------------------------------------------------------------------------
+
+
+DOXYFILE_ENCODING      = UTF-8
+
+# ROBOCOMP
+PROJECT_NAME           = 'self.name.toLower()
+//PROJECT_NAME           = 'self.name.toLower()'Comp
+'
+PROJECT_NUMBER         =
+
+
+OUTPUT_DIRECTORY       = doc
+CREATE_SUBDIRS         = NO
+OUTPUT_LANGUAGE        = English
+
+# If the BRIEF_MEMBER_DESC tag is set to YES (the default) Doxygen will
+# include brief member descriptions after the members that are listed in
+# the file and class documentation (similar to JavaDoc).
+# Set to NO to disable this.
+
+BRIEF_MEMBER_DESC      = YES
+
+# If the REPEAT_BRIEF tag is set to YES (the default) Doxygen will prepend
+# the brief description of a member or function before the detailed description.
+# Note: if both HIDE_UNDOC_MEMBERS and BRIEF_MEMBER_DESC are set to NO, the
+# brief descriptions will be completely suppressed.
+
+REPEAT_BRIEF           = YES
+
+# This tag implements a quasi-intelligent brief description abbreviator
+# that is used to form the text in various listings. Each string
+# in this list, if found as the leading text of the brief description, will be
+# stripped from the text and the result after processing the whole list, is
+# used as the annotated text. Otherwise, the brief description is used as-is.
+# If left blank, the following values are used ("$name" is automatically
+# replaced with the name of the entity): "The $name class" "The $name widget"
+# "The $name file" "is" "provides" "specifies" "contains"
+# "represents" "a" "an" "the"
+
+ABBREVIATE_BRIEF       =
+
+# If the ALWAYS_DETAILED_SEC and REPEAT_BRIEF tags are both set to YES then
+# Doxygen will generate a detailed section even if there is only a brief
+# description.
+
+ALWAYS_DETAILED_SEC    = NO
+
+# If the INLINE_INHERITED_MEMB tag is set to YES, doxygen will show all
+# inherited members of a class in the documentation of that class as if those
+# members were ordinary class members. Constructors, destructors and assignment
+# operators of the base classes will not be shown.
+
+INLINE_INHERITED_MEMB  = NO
+
+# If the FULL_PATH_NAMES tag is set to YES then Doxygen will prepend the full
+# path before files name in the file list and in the header files. If set
+# to NO the shortest path that makes the file name unique will be used.
+
+FULL_PATH_NAMES        = YES
+
+# If the FULL_PATH_NAMES tag is set to YES then the STRIP_FROM_PATH tag
+# can be used to strip a user-defined part of the path. Stripping is
+# only done if one of the specified strings matches the left-hand part of
+# the path. The tag can be used to show relative paths in the file list.
+# If left blank the directory from which doxygen is run is used as the
+# path to strip.
+
+STRIP_FROM_PATH        =
+
+# The STRIP_FROM_INC_PATH tag can be used to strip a user-defined part of
+# the path mentioned in the documentation of a class, which tells
+# the reader which header file to include in order to use a class.
+# If left blank only the name of the header file containing the class
+# definition is used. Otherwise one should specify the include paths that
+# are normally passed to the compiler using the -I flag.
+
+STRIP_FROM_INC_PATH    =
+
+# If the SHORT_NAMES tag is set to YES, doxygen will generate much shorter
+# (but less readable) file names. This can be useful is your file systems
+# doesn\'t support long names like on DOS, Mac, or CD-ROM.
+
+SHORT_NAMES            = NO
+
+# If the JAVADOC_AUTOBRIEF tag is set to YES then Doxygen
+# will interpret the first line (until the first dot) of a JavaDoc-style
+# comment as the brief description. If set to NO, the JavaDoc
+# comments will behave just like regular Qt-style comments
+# (thus requiring an explicit @brief command for a brief description.)
+
+JAVADOC_AUTOBRIEF      = NO
+
+# If the QT_AUTOBRIEF tag is set to YES then Doxygen will
+# interpret the first line (until the first dot) of a Qt-style
+# comment as the brief description. If set to NO, the comments
+# will behave just like regular Qt-style comments (thus requiring
+# an explicit \\brief command for a brief description.)
+
+QT_AUTOBRIEF           = NO
+
+# The MULTILINE_CPP_IS_BRIEF tag can be set to YES to make Doxygen
+# treat a multi-line C++ special comment block (i.e. a block of //! or ///
+# comments) as a brief description. This used to be the default behaviour.
+# The new default is to treat a multi-line C++ comment block as a detailed
+# description. Set this tag to YES if you prefer the old behaviour instead.
+
+MULTILINE_CPP_IS_BRIEF = NO
+
+# If the INHERIT_DOCS tag is set to YES (the default) then an undocumented
+# member inherits the documentation from any documented member that it
+# re-implements.
+
+INHERIT_DOCS           = YES
+
+# If the SEPARATE_MEMBER_PAGES tag is set to YES, then doxygen will produce
+# a new page for each member. If set to NO, the documentation of a member will
+# be part of the file/class/namespace that contains it.
+
+SEPARATE_MEMBER_PAGES  = NO
+
+# ROBOCOMP
+TAB_SIZE               = 4
+
+# This tag can be used to specify a number of aliases that acts
+# as commands in the documentation. An alias has the form "name=value".
+# For example adding "sideeffect=\\par Side Effects:\\n" will allow you to
+# put the command \\sideeffect (or @sideeffect) in the documentation, which
+# will result in a user-defined paragraph with heading "Side Effects:".
+# You can put \\n\'s in the value part of an alias to insert newlines.
+
+ALIASES                =
+
+OPTIMIZE_OUTPUT_FOR_C  = NO
+OPTIMIZE_OUTPUT_JAVA   = NO
+OPTIMIZE_FOR_FORTRAN   = NO
+OPTIMIZE_OUTPUT_VHDL   = NO
+
+# Doxygen selects the parser to use depending on the extension of the files it parses.
+# With this tag you can assign which parser to use for a given extension.
+# Doxygen has a built-in mapping, but you can override or extend it using this tag.
+# The format is ext=language, where ext is a file extension, and language is one of
+# the parsers supported by doxygen: IDL, Java, Javascript, C#, C, C++, D, PHP,
+# Objective-C, Python, Fortran, VHDL, C, C++. For instance to make doxygen treat
+# .inc files as Fortran files (default is PHP), and .f files as C (default is Fortran),
+# use: inc=Fortran f=C. Note that for custom extensions you also need to set FILE_PATTERNS otherwise the files are not read by doxygen.
+
+EXTENSION_MAPPING      =
+
+# If you use STL classes (i.e. std::string, std::vector, etc.) but do not want
+# to include (a tag file for) the STL sources as input, then you should
+# set this tag to YES in order to let doxygen match functions declarations and
+# definitions whose arguments contain STL classes (e.g. func(std::string); v.s.
+# func(std::string) {}). This also make the inheritance and collaboration
+# diagrams that involve STL classes more complete and accurate.
+
+BUILTIN_STL_SUPPORT    = NO
+
+# If you use Microsoft\'s C++/CLI language, you should set this option to YES to
+# enable parsing support.
+
+CPP_CLI_SUPPORT        = NO
+
+# Set the SIP_SUPPORT tag to YES if your project consists of sip sources only.
+# Doxygen will parse them like normal C++ but will assume all classes use public
+# instead of private inheritance when no explicit protection keyword is present.
+
+SIP_SUPPORT            = NO
+
+# For Microsoft\'s IDL there are propget and propput attributes to indicate getter
+# and setter methods for a property. Setting this option to YES (the default)
+# will make doxygen to replace the get and set methods by a property in the
+# documentation. This will only work if the methods are indeed getting or
+# setting a simple type. If this is not the case, or you want to show the
+# methods anyway, you should set this option to NO.
+
+IDL_PROPERTY_SUPPORT   = YES
+
+# If member grouping is used in the documentation and the DISTRIBUTE_GROUP_DOC
+# tag is set to YES, then doxygen will reuse the documentation of the first
+# member in the group (if any) for the other members of the group. By default
+# all members of a group must be documented explicitly.
+
+DISTRIBUTE_GROUP_DOC   = NO
+
+# Set the SUBGROUPING tag to YES (the default) to allow class member groups of
+# the same type (for instance a group of public functions) to be put as a
+# subgroup of that type (e.g. under the Public Functions section). Set it to
+# NO to prevent subgrouping. Alternatively, this can be done per class using
+# the \nosubgrouping command.
+
+SUBGROUPING            = YES
+
+# When TYPEDEF_HIDES_STRUCT is enabled, a typedef of a struct, union, or enum
+# is documented as struct, union, or enum with the name of the typedef. So
+# typedef struct TypeS {} TypeT, will appear in the documentation as a struct
+# with name TypeT. When disabled the typedef will appear as a member of a file,
+# namespace, or class. And the struct will be named TypeS. This can typically
+# be useful for C code in case the coding convention dictates that all compound
+# types are typedef\'ed and only the typedef is referenced, never the tag name.
+
+TYPEDEF_HIDES_STRUCT   = NO
+
+# The SYMBOL_CACHE_SIZE determines the size of the internal cache use to
+# determine which symbols to keep in memory and which to flush to disk.
+# When the cache is full, less often used symbols will be written to disk.
+# For small to medium size projects (<1000 input files) the default value is
+# probably good enough. For larger projects a too small cache size can cause
+# doxygen to be busy swapping symbols to and from disk most of the time
+# causing a significant performance penality.
+# If the system has enough physical memory increasing the cache will improve the
+# performance by keeping more symbols in memory. Note that the value works on
+# a logarithmic scale so increasing the size by one will rougly double the
+# memory usage. The cache size is given by this formula:
+# 2^(16+SYMBOL_CACHE_SIZE). The valid range is 0..9, the default is 0,
+# corresponding to a cache size of 2^16 = 65536 symbols
+
+SYMBOL_CACHE_SIZE      = 0
+
+#---------------------------------------------------------------------------
+# Build related configuration options
+#---------------------------------------------------------------------------
+
+# If the EXTRACT_ALL tag is set to YES doxygen will assume all entities in
+# documentation are documented, even if no documentation was available.
+# Private class members and static file members will be hidden unless
+# the EXTRACT_PRIVATE and EXTRACT_STATIC tags are set to YES
+
+#robocomp
+EXTRACT_ALL            = YES
+
+# If the EXTRACT_PRIVATE tag is set to YES all private members of a class
+# will be included in the documentation.
+
+EXTRACT_PRIVATE        = NO
+
+# If the EXTRACT_STATIC tag is set to YES all static members of a file
+# will be included in the documentation.
+
+EXTRACT_STATIC         = NO
+
+# If the EXTRACT_LOCAL_CLASSES tag is set to YES classes (and structs)
+# defined locally in source files will be included in the documentation.
+# If set to NO only classes defined in header files are included.
+
+EXTRACT_LOCAL_CLASSES  = YES
+
+# This flag is only useful for Objective-C code. When set to YES local
+# methods, which are defined in the implementation section but not in
+# the interface are included in the documentation.
+# If set to NO (the default) only methods in the interface are included.
+
+EXTRACT_LOCAL_METHODS  = NO
+
+# If this flag is set to YES, the members of anonymous namespaces will be
+# extracted and appear in the documentation as a namespace called
+# \'anonymous_namespace{file}\', where file will be replaced with the base
+# name of the file that contains the anonymous namespace. By default
+# anonymous namespace are hidden.
+
+EXTRACT_ANON_NSPACES   = NO
+
+# ROBOCOMP
+HIDE_UNDOC_MEMBERS     = NO
+HIDE_UNDOC_CLASSES     = NO
+HIDE_FRIEND_COMPOUNDS  = NO
+
+# If the HIDE_IN_BODY_DOCS tag is set to YES, Doxygen will hide any
+# documentation blocks found inside the body of a function.
+# If set to NO (the default) these blocks will be appended to the
+# function\'s detailed documentation block.
+
+HIDE_IN_BODY_DOCS      = NO
+
+# The INTERNAL_DOCS tag determines if documentation
+# that is typed after a \\internal command is included. If the tag is set
+# to NO (the default) then the documentation will be excluded.
+# Set it to YES to include the internal documentation.
+
+INTERNAL_DOCS          = NO
+
+# If the CASE_SENSE_NAMES tag is set to NO then Doxygen will only generate
+# file names in lower-case letters. If set to YES upper-case letters are also
+# allowed. This is useful if you have classes or files whose names only differ
+# in case and if your file system supports case sensitive file names. Windows
+# and Mac users are advised to set this option to NO.
+
+CASE_SENSE_NAMES       = YES
+
+# If the HIDE_SCOPE_NAMES tag is set to NO (the default) then Doxygen
+# will show members with their full class and namespace scopes in the
+# documentation. If set to YES the scope will be hidden.
+
+HIDE_SCOPE_NAMES       = NO
+
+# If the SHOW_INCLUDE_FILES tag is set to YES (the default) then Doxygen
+# will put a list of the files that are included by a file in the documentation
+# of that file.
+
+SHOW_INCLUDE_FILES     = YES
+
+# If the INLINE_INFO tag is set to YES (the default) then a tag [inline]
+# is inserted in the documentation for inline members.
+
+INLINE_INFO            = YES
+
+# If the SORT_MEMBER_DOCS tag is set to YES (the default) then doxygen
+# will sort the (detailed) documentation of file and class members
+# alphabetically by member name. If set to NO the members will appear in
+# declaration order.
+
+SORT_MEMBER_DOCS       = YES
+
+# If the SORT_BRIEF_DOCS tag is set to YES then doxygen will sort the
+# brief documentation of file, namespace and class members alphabetically
+# by member name. If set to NO (the default) the members will appear in
+# declaration order.
+
+SORT_BRIEF_DOCS        = NO
+
+# If the SORT_MEMBERS_CTORS_1ST tag is set to YES then doxygen will sort the (brief and detailed) documentation of class members so that constructors and destructors are listed first. If set to NO (the default) the constructors will appear in the respective orders defined by SORT_MEMBER_DOCS and SORT_BRIEF_DOCS. This tag will be ignored for brief docs if SORT_BRIEF_DOCS is set to NO and ignored for detailed docs if SORT_MEMBER_DOCS is set to NO.
+
+SORT_MEMBERS_CTORS_1ST = NO
+
+# If the SORT_GROUP_NAMES tag is set to YES then doxygen will sort the
+# hierarchy of group names into alphabetical order. If set to NO (the default)
+# the group names will appear in their defined order.
+
+SORT_GROUP_NAMES       = NO
+
+# If the SORT_BY_SCOPE_NAME tag is set to YES, the class list will be
+# sorted by fully-qualified names, including namespaces. If set to
+# NO (the default), the class list will be sorted only by class name,
+# not including the namespace part.
+# Note: This option is not very useful if HIDE_SCOPE_NAMES is set to YES.
+# Note: This option applies only to the class list, not to the
+# alphabetical list.
+
+SORT_BY_SCOPE_NAME     = NO
+
+# The GENERATE_TODOLIST tag can be used to enable (YES) or
+# disable (NO) the todo list. This list is created by putting \todo
+# commands in the documentation.
+
+GENERATE_TODOLIST      = YES
+
+# The GENERATE_TESTLIST tag can be used to enable (YES) or
+# disable (NO) the test list. This list is created by putting \test
+# commands in the documentation.
+
+GENERATE_TESTLIST      = YES
+
+# The GENERATE_BUGLIST tag can be used to enable (YES) or
+# disable (NO) the bug list. This list is created by putting \\bug
+# commands in the documentation.
+
+GENERATE_BUGLIST       = YES
+
+# The GENERATE_DEPRECATEDLIST tag can be used to enable (YES) or
+# disable (NO) the deprecated list. This list is created by putting
+# \\deprecated commands in the documentation.
+
+GENERATE_DEPRECATEDLIST= YES
+
+# The ENABLED_SECTIONS tag can be used to enable conditional
+# documentation sections, marked by \\if sectionname ... \\endif.
+
+ENABLED_SECTIONS       =
+
+# The MAX_INITIALIZER_LINES tag determines the maximum number of lines
+# the initial value of a variable or define consists of for it to appear in
+# the documentation. If the initializer consists of more lines than specified
+# here it will be hidden. Use a value of 0 to hide initializers completely.
+# The appearance of the initializer of individual variables and defines in the
+# documentation can be controlled using \\showinitializer or \\hideinitializer
+# command in the documentation regardless of this setting.
+
+MAX_INITIALIZER_LINES  = 30
+
+# Set the SHOW_USED_FILES tag to NO to disable the list of files generated
+# at the bottom of the documentation of classes and structs. If set to YES the
+# list will mention the files that were used to generate the documentation.
+
+SHOW_USED_FILES        = YES
+
+# If the sources in your project are distributed over multiple directories
+# then setting the SHOW_DIRECTORIES tag to YES will show the directory hierarchy
+# in the documentation. The default is NO.
+
+SHOW_DIRECTORIES       = NO
+
+# Set the SHOW_FILES tag to NO to disable the generation of the Files page.
+# This will remove the Files entry from the Quick Index and from the
+# Folder Tree View (if specified). The default is YES.
+
+SHOW_FILES             = YES
+
+# Set the SHOW_NAMESPACES tag to NO to disable the generation of the
+# Namespaces page.
+# This will remove the Namespaces entry from the Quick Index
+# and from the Folder Tree View (if specified). The default is YES.
+
+SHOW_NAMESPACES        = YES
+
+# The FILE_VERSION_FILTER tag can be used to specify a program or script that
+# doxygen should invoke to get the current version for each file (typically from
+# the version control system). Doxygen will invoke the program by executing (via
+# popen()) the command <command> <input-file>, where <command> is the value of
+# the FILE_VERSION_FILTER tag, and <input-file> is the name of an input file
+# provided by doxygen. Whatever the program writes to standard output
+# is used as the file version. See the manual for examples.
+
+FILE_VERSION_FILTER    =
+
+# The LAYOUT_FILE tag can be used to specify a layout file which will be parsed by
+# doxygen. The layout file controls the global structure of the generated output files
+# in an output format independent way. The create the layout file that represents
+# doxygen\'s defaults, run doxygen with the -l option. You can optionally specify a
+# file name after the option, if omitted DoxygenLayout.xml will be used as the name
+# of the layout file.
+
+LAYOUT_FILE            =
+
+#---------------------------------------------------------------------------
+# configuration options related to warning and progress messages
+#---------------------------------------------------------------------------
+
+# ROBOCOMP
+QUIET                  = NO
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_ERROR      = YES
+
+# This WARN_NO_PARAMDOC option can be abled to get warnings for
+# functions that are documented, but have no documentation for their parameters
+# or return value. If set to NO (the default) doxygen will only warn about
+# wrong or incomplete parameter documentation, but not about the absence of
+# documentation.
+
+WARN_NO_PARAMDOC       = NO
+
+# The WARN_FORMAT tag determines the format of the warning messages that
+# doxygen can produce. The string should contain the $file, $line, and $text
+# tags, which will be replaced by the file and line number from which the
+# warning originated and the warning text. Optionally the format may contain
+# $version, which will be replaced by the version of the file (if it could
+# be obtained via FILE_VERSION_FILTER)
+
+WARN_FORMAT            = "$file:$line: $text"
+
+# The WARN_LOGFILE tag can be used to specify a file to which warning
+# and error messages should be written. If left blank the output is written
+# to stderr.
+
+WARN_LOGFILE           =
+
+#---------------------------------------------------------------------------
+# configuration options related to the input files
+#---------------------------------------------------------------------------
+
+# The INPUT tag can be used to specify the files and/or directories that contain
+# documented source files. You may enter file names like "myfile.cpp" or
+# directories like "/usr/src/myproject". Separate the files or directories
+# with spaces.
+
+INPUT                  =
+
+# This tag can be used to specify the character encoding of the source files
+# that doxygen parses. Internally doxygen uses the UTF-8 encoding, which is
+# also the default input encoding. Doxygen uses libiconv (or the iconv built
+# into libc) for the transcoding. See http://www.gnu.org/software/libiconv for
+# the list of possible encodings.
+
+INPUT_ENCODING         = UTF-8
+
+# If the value of the INPUT tag contains directories, you can use the
+# FILE_PATTERNS tag to specify one or more wildcard pattern (like *.cpp
+# and *.h) to filter out the source-files in the directories. If left
+# blank the following patterns are tested:
+# *.c *.cc *.cxx *.cpp *.c++ *.java *.ii *.ixx *.ipp *.i++ *.inl *.h *.hh *.hxx
+# *.hpp *.h++ *.idl *.odl *.cs *.php *.php3 *.inc *.m *.mm *.py *.f90
+
+#robocomp
+FILE_PATTERNS          = *.cpp *.h *.c *.py
+
+# The RECURSIVE tag can be used to turn specify whether or not subdirectories
+# should be searched for input files as well. Possible values are YES and NO.
+# If left blank NO is used.
+
+RECURSIVE              = YES
+
+# The EXCLUDE tag can be used to specify files and/or directories that should
+# excluded from the INPUT source files. This way you can easily exclude a
+# subdirectory from a directory tree whose root is specified with the INPUT tag.
+
+# ROBOCOMP
+EXCLUDE                = 
+#Base.h Base.cpp Camara.h Camara.cpp CamMotion.h CamMotion.cpp Laser.h Laser.cpp Micro.h Micro.cpp
+
+# The EXCLUDE_SYMLINKS tag can be used select whether or not files or
+# directories that are symbolic links (a Unix filesystem feature) are excluded
+# from the input.
+
+EXCLUDE_SYMLINKS       = NO
+
+# If the value of the INPUT tag contains directories, you can use the
+# EXCLUDE_PATTERNS tag to specify one or more wildcard patterns to exclude
+# certain files from those directories. Note that the wildcards are matched
+# against the file with absolute path, so to exclude all test directories
+# for example use the pattern */test/*
+
+# ROBOCOMP
+EXCLUDE_PATTERNS       = A* B* C* D* E* F* G* H* I* J* K* L* M* N* O* P* Q* R* S* T* U* V* W* X* Y* Z* 
+
+# The EXCLUDE_SYMBOLS tag can be used to specify one or more symbol names
+# (namespaces, classes, functions, etc.) that should be excluded from the
+# output. The symbol name can be a fully qualified name, a word, or if the
+# wildcard * is used, a substring. Examples: ANamespace, AClass,
+# AClass::ANamespace, ANamespace::*Test
+
+EXCLUDE_SYMBOLS        =
+
+# The EXAMPLE_PATH tag can be used to specify one or more files or
+# directories that contain example code fragments that are included (see
+# the \\include command).
+
+EXAMPLE_PATH           =
+
+# If the value of the EXAMPLE_PATH tag contains directories, you can use the
+# EXAMPLE_PATTERNS tag to specify one or more wildcard pattern (like *.cpp
+# and *.h) to filter out the source-files in the directories. If left
+# blank all files are included.
+
+EXAMPLE_PATTERNS       =
+
+# If the EXAMPLE_RECURSIVE tag is set to YES then subdirectories will be
+# searched for input files to be used with the \\include or \\dontinclude
+# commands irrespective of the value of the RECURSIVE tag.
+# Possible values are YES and NO. If left blank NO is used.
+
+EXAMPLE_RECURSIVE      = NO
+
+# The IMAGE_PATH tag can be used to specify one or more files or
+# directories that contain image that are included in the documentation (see
+# the \\image command).
+
+IMAGE_PATH             =
+
+# The INPUT_FILTER tag can be used to specify a program that doxygen should
+# invoke to filter for each input file. Doxygen will invoke the filter program
+# by executing (via popen()) the command <filter> <input-file>, where <filter>
+# is the value of the INPUT_FILTER tag, and <input-file> is the name of an
+# input file. Doxygen will then use the output that the filter program writes
+# to standard output.
+# If FILTER_PATTERNS is specified, this tag will be
+# ignored.
+
+INPUT_FILTER           =
+
+# The FILTER_PATTERNS tag can be used to specify filters on a per file pattern
+# basis.
+# Doxygen will compare the file name with each pattern and apply the
+# filter if there is a match.
+# The filters are a list of the form:
+# pattern=filter (like *.cpp=my_cpp_filter). See INPUT_FILTER for further
+# info on how filters are used. If FILTER_PATTERNS is empty, INPUT_FILTER
+# is applied to all files.
+
+FILTER_PATTERNS        =
+
+# If the FILTER_SOURCE_FILES tag is set to YES, the input filter (if set using
+# INPUT_FILTER) will be used to filter the input files when producing source
+# files to browse (i.e. when SOURCE_BROWSER is set to YES).
+
+FILTER_SOURCE_FILES    = NO
+
+#---------------------------------------------------------------------------
+# configuration options related to source browsing
+#---------------------------------------------------------------------------
+
+# If the SOURCE_BROWSER tag is set to YES then a list of source files will
+# be generated. Documented entities will be cross-referenced with these sources.
+# Note: To get rid of all source code in the generated output, make sure also
+# VERBATIM_HEADERS is set to NO.
+
+#robocomp
+SOURCE_BROWSER         = YES
+
+# Setting the INLINE_SOURCES tag to YES will include the body
+# of functions and classes directly in the documentation.
+
+INLINE_SOURCES         = NO
+
+# Setting the STRIP_CODE_COMMENTS tag to YES (the default) will instruct
+# doxygen to hide any special comment blocks from generated source code
+# fragments. Normal C and C++ comments will always remain visible.
+
+STRIP_CODE_COMMENTS    = YES
+
+# If the REFERENCED_BY_RELATION tag is set to YES
+# then for each documented function all documented
+# functions referencing it will be listed.
+
+REFERENCED_BY_RELATION = NO
+
+# If the REFERENCES_RELATION tag is set to YES
+# then for each documented function all documented entities
+# called/used by that function will be listed.
+
+REFERENCES_RELATION    = NO
+
+# If the REFERENCES_LINK_SOURCE tag is set to YES (the default)
+# and SOURCE_BROWSER tag is set to YES, then the hyperlinks from
+# functions in REFERENCES_RELATION and REFERENCED_BY_RELATION lists will
+# link to the source code.
+# Otherwise they will link to the documentation.
+
+REFERENCES_LINK_SOURCE = YES
+
+# If the USE_HTAGS tag is set to YES then the references to source code
+# will point to the HTML generated by the htags(1) tool instead of doxygen
+# built-in source browser. The htags tool is part of GNU\'s global source
+# tagging system (see http://www.gnu.org/software/global/global.html). You
+# will need version 4.8.6 or higher.
+
+USE_HTAGS              = NO
+
+# If the VERBATIM_HEADERS tag is set to YES (the default) then Doxygen
+# will generate a verbatim copy of the header file for each class for
+# which an include is specified. Set to NO to disable this.
+
+VERBATIM_HEADERS       = YES
+
+#---------------------------------------------------------------------------
+# configuration options related to the alphabetical class index
+#---------------------------------------------------------------------------
+
+# If the ALPHABETICAL_INDEX tag is set to YES, an alphabetical index
+# of all compounds will be generated. Enable this if the project
+# contains a lot of classes, structs, unions or interfaces.
+
+ALPHABETICAL_INDEX     = NO
+
+# If the alphabetical index is enabled (see ALPHABETICAL_INDEX) then
+# the COLS_IN_ALPHA_INDEX tag can be used to specify the number of columns
+# in which this list will be split (can be a number in the range [1..20])
+
+COLS_IN_ALPHA_INDEX    = 5
+
+# In case all classes in a project start with a common prefix, all
+# classes will be put under the same header in the alphabetical index.
+# The IGNORE_PREFIX tag can be used to specify one or more prefixes that
+# should be ignored while generating the index headers.
+
+IGNORE_PREFIX          =
+
+#---------------------------------------------------------------------------
+# configuration options related to the HTML output
+#---------------------------------------------------------------------------
+
+# If the GENERATE_HTML tag is set to YES (the default) Doxygen will
+# generate HTML output.
+
+GENERATE_HTML          = YES
+
+# The HTML_OUTPUT tag is used to specify where the HTML docs will be put.
+# If a relative path is entered the value of OUTPUT_DIRECTORY will be
+# put in front of it. If left blank `html\' will be used as the default path.
+
+HTML_OUTPUT            = html
+
+# The HTML_FILE_EXTENSION tag can be used to specify the file extension for
+# each generated HTML page (for example: .htm,.php,.asp). If it is left blank
+# doxygen will generate files with .html extension.
+
+HTML_FILE_EXTENSION    = .html
+
+# The HTML_HEADER tag can be used to specify a personal HTML header for
+# each generated HTML page. If it is left blank doxygen will generate a
+# standard header.
+# ROBOCOMP
+HTML_HEADER            =
+HTML_FOOTER            =
+
+# The HTML_STYLESHEET tag can be used to specify a user-defined cascading
+# style sheet that is used by each HTML page. It can be used to
+# fine-tune the look of the HTML output. If the tag is left blank doxygen
+# will generate a default style sheet. Note that doxygen will try to copy
+# the style sheet file to the HTML output directory, so don\'t put your own
+# stylesheet in the HTML output directory as well, or it will be erased!
+
+HTML_STYLESHEET        =
+
+# If the HTML_ALIGN_MEMBERS tag is set to YES, the members of classes,
+# files or namespaces will be aligned in HTML using tables. If set to
+# NO a bullet list will be used.
+
+HTML_ALIGN_MEMBERS     = YES
+
+# If the HTML_DYNAMIC_SECTIONS tag is set to YES then the generated HTML
+# documentation will contain sections that can be hidden and shown after the
+# page has loaded. For this to work a browser that supports
+# JavaScript and DHTML is required (for instance Mozilla 1.0+, Firefox
+# Netscape 6.0+, Internet explorer 5.0+, Konqueror, or Safari).
+
+#robocomp
+HTML_DYNAMIC_SECTIONS  = YES
+
+# If the GENERATE_DOCSET tag is set to YES, additional index files
+# will be generated that can be used as input for Apple\'s Xcode 3
+# integrated development environment, introduced with OSX 10.5 (Leopard).
+# To create a documentation set, doxygen will generate a Makefile in the
+# HTML output directory. Running make will produce the docset in that
+# directory and running "make install" will install the docset in
+# ~/Library/Developer/Shared/Documentation/DocSets so that Xcode will find
+# it at startup.
+# See http://developer.apple.com/tools/creatingdocsetswithdoxygen.html for more information.
+
+GENERATE_DOCSET        = NO
+
+# When GENERATE_DOCSET tag is set to YES, this tag determines the name of the
+# feed. A documentation feed provides an umbrella under which multiple
+# documentation sets from a single provider (such as a company or product suite)
+# can be grouped.
+
+DOCSET_FEEDNAME        = "Doxygen generated docs"
+
+# When GENERATE_DOCSET tag is set to YES, this tag specifies a string that
+# should uniquely identify the documentation set bundle. This should be a
+# reverse domain-name style string, e.g. com.mycompany.MyDocSet. Doxygen
+# will append .docset to the name.
+
+DOCSET_BUNDLE_ID       = org.doxygen.Project
+
+# If the GENERATE_HTMLHELP tag is set to YES, additional index files
+# will be generated that can be used as input for tools like the
+# Microsoft HTML help workshop to generate a compiled HTML help file (.chm)
+# of the generated HTML documentation.
+
+GENERATE_HTMLHELP      = NO
+
+# If the GENERATE_HTMLHELP tag is set to YES, the CHM_FILE tag can
+# be used to specify the file name of the resulting .chm file. You
+# can add a path in front of the file if the result should not be
+# written to the html output directory.
+
+CHM_FILE               =
+
+# If the GENERATE_HTMLHELP tag is set to YES, the HHC_LOCATION tag can
+# be used to specify the location (absolute path including file name) of
+# the HTML help compiler (hhc.exe). If non-empty doxygen will try to run
+# the HTML help compiler on the generated index.hhp.
+
+HHC_LOCATION           =
+
+# If the GENERATE_HTMLHELP tag is set to YES, the GENERATE_CHI flag
+# controls if a separate .chi index file is generated (YES) or that
+# it should be included in the master .chm file (NO).
+
+GENERATE_CHI           = NO
+
+# If the GENERATE_HTMLHELP tag is set to YES, the CHM_INDEX_ENCODING
+# is used to encode HtmlHelp index (hhk), content (hhc) and project file
+# content.
+
+CHM_INDEX_ENCODING     =
+
+# If the GENERATE_HTMLHELP tag is set to YES, the BINARY_TOC flag
+# controls whether a binary table of contents is generated (YES) or a
+# normal table of contents (NO) in the .chm file.
+
+BINARY_TOC             = NO
+
+# The TOC_EXPAND flag can be set to YES to add extra items for group members
+# to the contents of the HTML help documentation and to the tree view.
+
+TOC_EXPAND             = NO
+
+# If the GENERATE_QHP tag is set to YES and both QHP_NAMESPACE and QHP_VIRTUAL_FOLDER
+# are set, an additional index file will be generated that can be used as input for
+# Qt\'s qhelpgenerator to generate a Qt Compressed Help (.qch) of the generated
+# HTML documentation.
+#robocomp
+GENERATE_QHP           = NO
+
+# If the QHG_LOCATION tag is specified, the QCH_FILE tag can
+# be used to specify the file name of the resulting .qch file.
+# The path specified is relative to the HTML output folder.
+
+QCH_FILE               =
+
+# The QHP_NAMESPACE tag specifies the namespace to use when generating
+# Qt Help Project output. For more information please see
+# http://doc.trolltech.com/qthelpproject.html#namespace
+
+QHP_NAMESPACE          =
+
+# The QHP_VIRTUAL_FOLDER tag specifies the namespace to use when generating
+# Qt Help Project output. For more information please see
+# http://doc.trolltech.com/qthelpproject.html#virtual-folders
+
+QHP_VIRTUAL_FOLDER     = 
+
+# If QHP_CUST_FILTER_NAME is set, it specifies the name of a custom filter to add.
+# For more information please see
+# http://doc.trolltech.com/qthelpproject.html#custom-filters
+
+QHP_CUST_FILTER_NAME   =
+
+# The QHP_CUST_FILT_ATTRS tag specifies the list of the attributes of the custom filter to add.For more information please see
+# <a href="http://doc.trolltech.com/qthelpproject.html#custom-filters">Qt Help Project / Custom Filters</a>.
+
+QHP_CUST_FILTER_ATTRS  =
+
+# The QHP_SECT_FILTER_ATTRS tag specifies the list of the attributes this project\'s
+# filter section matches.
+# <a href="http://doc.trolltech.com/qthelpproject.html#filter-attributes">Qt Help Project / Filter Attributes</a>.
+
+QHP_SECT_FILTER_ATTRS  =
+
+# If the GENERATE_QHP tag is set to YES, the QHG_LOCATION tag can
+# be used to specify the location of Qt\'s qhelpgenerator.
+# If non-empty doxygen will try to run qhelpgenerator on the generated
+# .qhp file.
+
+QHG_LOCATION           =
+
+# The DISABLE_INDEX tag can be used to turn on/off the condensed index at
+# top of each HTML page. The value NO (the default) enables the index and
+# the value YES disables it.
+
+DISABLE_INDEX          = NO
+
+# This tag can be used to set the number of enum values (range [1..20])
+# that doxygen will group on one line in the generated HTML documentation.
+
+ENUM_VALUES_PER_LINE   = 4
+
+# The GENERATE_TREEVIEW tag is used to specify whether a tree-like index
+# structure should be generated to display hierarchical information.
+# If the tag value is set to YES, a side panel will be generated
+# containing a tree-like index structure (just like the one that
+# is generated for HTML Help). For this to work a browser that supports
+# JavaScript, DHTML, CSS and frames is required (i.e. any modern browser).
+# Windows users are probably better off using the HTML help feature.
+
+GENERATE_TREEVIEW      = NO
+
+# By enabling USE_INLINE_TREES, doxygen will generate the Groups, Directories,
+# and Class Hierarchy pages using a tree view instead of an ordered list.
+
+USE_INLINE_TREES       = NO
+
+# If the treeview is enabled (see GENERATE_TREEVIEW) then this tag can be
+# used to set the initial width (in pixels) of the frame in which the tree
+# is shown.
+
+TREEVIEW_WIDTH         = 250
+
+# Use this tag to change the font size of Latex formulas included
+# as images in the HTML documentation. The default is 10. Note that
+# when you change the font size after a successful doxygen run you need
+# to manually remove any form_*.png images from the HTML output directory
+# to force them to be regenerated.
+
+FORMULA_FONTSIZE       = 10
+
+# When the SEARCHENGINE tag is enable doxygen will generate a search box for the HTML output. The underlying search engine uses javascript
+# and DHTML and should work on any modern browser. Note that when using HTML help (GENERATE_HTMLHELP) or Qt help (GENERATE_QHP)
+# there is already a search function so this one should typically
+# be disabled.
+
+SEARCHENGINE           = YES
+
+#---------------------------------------------------------------------------
+# configuration options related to the LaTeX output
+#---------------------------------------------------------------------------
+
+# If the GENERATE_LATEX tag is set to YES (the default) Doxygen will
+# generate Latex output.
+
+GENERATE_LATEX         = NO
+
+# The LATEX_OUTPUT tag is used to specify where the LaTeX docs will be put.
+# If a relative path is entered the value of OUTPUT_DIRECTORY will be
+# put in front of it. If left blank `latex\' will be used as the default path.
+
+LATEX_OUTPUT           = latex
+
+# The LATEX_CMD_NAME tag can be used to specify the LaTeX command name to be
+# invoked. If left blank `latex\' will be used as the default command name.
+
+LATEX_CMD_NAME         = latex
+
+# The MAKEINDEX_CMD_NAME tag can be used to specify the command name to
+# generate index for LaTeX. If left blank `makeindex\' will be used as the
+# default command name.
+
+MAKEINDEX_CMD_NAME     = makeindex
+
+# If the COMPACT_LATEX tag is set to YES Doxygen generates more compact
+# LaTeX documents. This may be useful for small projects and may help to
+# save some trees in general.
+
+COMPACT_LATEX          = NO
+
+# The PAPER_TYPE tag can be used to set the paper type that is used
+# by the printer. Possible values are: a4, a4wide, letter, legal and
+# executive. If left blank a4wide will be used.
+
+PAPER_TYPE             = a4wide
+
+# The EXTRA_PACKAGES tag can be to specify one or more names of LaTeX
+# packages that should be included in the LaTeX output.
+
+EXTRA_PACKAGES         =
+
+# The LATEX_HEADER tag can be used to specify a personal LaTeX header for
+# the generated latex document. The header should contain everything until
+# the first chapter. If it is left blank doxygen will generate a
+# standard header. Notice: only use this tag if you know what you are doing!
+
+LATEX_HEADER           =
+
+# If the PDF_HYPERLINKS tag is set to YES, the LaTeX that is generated
+# is prepared for conversion to pdf (using ps2pdf). The pdf file will
+# contain links (just like the HTML output) instead of page references
+# This makes the output suitable for online browsing using a pdf viewer.
+
+PDF_HYPERLINKS         = YES
+
+# If the USE_PDFLATEX tag is set to YES, pdflatex will be used instead of
+# plain latex in the generated Makefile. Set this option to YES to get a
+# higher quality PDF documentation.
+
+USE_PDFLATEX           = YES
+
+# If the LATEX_BATCHMODE tag is set to YES, doxygen will add the \\batchmode.
+# command to the generated LaTeX files. This will instruct LaTeX to keep
+# running if errors occur, instead of asking the user for help.
+# This option is also used when generating formulas in HTML.
+
+LATEX_BATCHMODE        = NO
+
+# If LATEX_HIDE_INDICES is set to YES then doxygen will not
+# include the index chapters (such as File Index, Compound Index, etc.)
+# in the output.
+
+LATEX_HIDE_INDICES     = NO
+
+# If LATEX_SOURCE_CODE is set to YES then doxygen will include source code with syntax highlighting in the LaTeX output. Note that which sources are shown also depends on other settings such as SOURCE_BROWSER.
+
+LATEX_SOURCE_CODE      = NO
+
+#---------------------------------------------------------------------------
+# configuration options related to the RTF output
+#---------------------------------------------------------------------------
+
+# If the GENERATE_RTF tag is set to YES Doxygen will generate RTF output
+# The RTF output is optimized for Word 97 and may not look very pretty with
+# other RTF readers or editors.
+
+GENERATE_RTF           = NO
+
+# The RTF_OUTPUT tag is used to specify where the RTF docs will be put.
+# If a relative path is entered the value of OUTPUT_DIRECTORY will be
+# put in front of it. If left blank `rtf\' will be used as the default path.
+
+RTF_OUTPUT             = rtf
+
+# If the COMPACT_RTF tag is set to YES Doxygen generates more compact
+# RTF documents. This may be useful for small projects and may help to
+# save some trees in general.
+
+COMPACT_RTF            = NO
+
+# If the RTF_HYPERLINKS tag is set to YES, the RTF that is generated
+# will contain hyperlink fields. The RTF file will
+# contain links (just like the HTML output) instead of page references.
+# This makes the output suitable for online browsing using WORD or other
+# programs which support those fields.
+# Note: wordpad (write) and others do not support links.
+
+RTF_HYPERLINKS         = NO
+
+# Load stylesheet definitions from file. Syntax is similar to doxygen\'s
+# config file, i.e. a series of assignments. You only have to provide
+# replacements, missing definitions are set to their default value.
+
+RTF_STYLESHEET_FILE    =
+
+# Set optional variables used in the generation of an rtf document.
+# Syntax is similar to doxygen\'s config file.
+
+RTF_EXTENSIONS_FILE    =
+
+#---------------------------------------------------------------------------
+# configuration options related to the man page output
+#---------------------------------------------------------------------------
+
+# If the GENERATE_MAN tag is set to YES (the default) Doxygen will
+# generate man pages
+
+GENERATE_MAN           = NO
+
+# The MAN_OUTPUT tag is used to specify where the man pages will be put.
+# If a relative path is entered the value of OUTPUT_DIRECTORY will be
+# put in front of it. If left blank `man\' will be used as the default path.
+
+MAN_OUTPUT             = man
+
+# The MAN_EXTENSION tag determines the extension that is added to
+# the generated man pages (default is the subroutine\'s section .3)
+
+MAN_EXTENSION          = .3
+
+# If the MAN_LINKS tag is set to YES and Doxygen generates man output,
+# then it will generate one additional man file for each entity
+# documented in the real man page(s). These additional files
+# only source the real man page, but without them the man command
+# would be unable to find the correct page. The default is NO.
+
+MAN_LINKS              = NO
+
+#---------------------------------------------------------------------------
+# configuration options related to the XML output
+#---------------------------------------------------------------------------
+
+# If the GENERATE_XML tag is set to YES Doxygen will
+# generate an XML file that captures the structure of
+# the code including all documentation.
+
+GENERATE_XML           = NO
+
+# The XML_OUTPUT tag is used to specify where the XML pages will be put.
+# If a relative path is entered the value of OUTPUT_DIRECTORY will be
+# put in front of it. If left blank `xml\' will be used as the default path.
+
+XML_OUTPUT             = xml
+
+# The XML_SCHEMA tag can be used to specify an XML schema,
+# which can be used by a validating XML parser to check the
+# syntax of the XML files.
+
+XML_SCHEMA             =
+
+# The XML_DTD tag can be used to specify an XML DTD,
+# which can be used by a validating XML parser to check the
+# syntax of the XML files.
+
+XML_DTD                =
+
+# If the XML_PROGRAMLISTING tag is set to YES Doxygen will
+# dump the program listings (including syntax highlighting
+# and cross-referencing information) to the XML output. Note that
+# enabling this will significantly increase the size of the XML output.
+
+XML_PROGRAMLISTING     = YES
+
+#---------------------------------------------------------------------------
+# configuration options for the AutoGen Definitions output
+#---------------------------------------------------------------------------
+
+# If the GENERATE_AUTOGEN_DEF tag is set to YES Doxygen will
+# generate an AutoGen Definitions (see autogen.sf.net) file
+# that captures the structure of the code including all
+# documentation. Note that this feature is still experimental
+# and incomplete at the moment.
+
+GENERATE_AUTOGEN_DEF   = NO
+
+#---------------------------------------------------------------------------
+# configuration options related to the Perl module output
+#---------------------------------------------------------------------------
+
+# If the GENERATE_PERLMOD tag is set to YES Doxygen will
+# generate a Perl module file that captures the structure of
+# the code including all documentation. Note that this
+# feature is still experimental and incomplete at the
+# moment.
+
+GENERATE_PERLMOD       = NO
+
+# If the PERLMOD_LATEX tag is set to YES Doxygen will generate
+# the necessary Makefile rules, Perl scripts and LaTeX code to be able
+# to generate PDF and DVI output from the Perl module output.
+
+PERLMOD_LATEX          = NO
+
+# If the PERLMOD_PRETTY tag is set to YES the Perl module output will be
+# nicely formatted so it can be parsed by a human reader.
+# This is useful
+# if you want to understand what is going on.
+# On the other hand, if this
+# tag is set to NO the size of the Perl module output will be much smaller
+# and Perl will parse it just the same.
+
+PERLMOD_PRETTY         = YES
+
+# The names of the make variables in the generated doxyrules.make file
+# are prefixed with the string contained in PERLMOD_MAKEVAR_PREFIX.
+# This is useful so different doxyrules.make files included by the same
+# Makefile don\'t overwrite each other\'s variables.
+
+PERLMOD_MAKEVAR_PREFIX =
+
+#---------------------------------------------------------------------------
+# Configuration options related to the preprocessor
+#---------------------------------------------------------------------------
+
+# If the ENABLE_PREPROCESSING tag is set to YES (the default) Doxygen will
+# evaluate all C-preprocessor directives found in the sources and include
+# files.
+
+ENABLE_PREPROCESSING   = YES
+
+# If the MACRO_EXPANSION tag is set to YES Doxygen will expand all macro
+# names in the source code. If set to NO (the default) only conditional
+# compilation will be performed. Macro expansion can be done in a controlled
+# way by setting EXPAND_ONLY_PREDEF to YES.
+
+MACRO_EXPANSION        = NO
+
+# If the EXPAND_ONLY_PREDEF and MACRO_EXPANSION tags are both set to YES
+# then the macro expansion is limited to the macros specified with the
+# PREDEFINED and EXPAND_AS_DEFINED tags.
+
+EXPAND_ONLY_PREDEF     = NO
+
+# If the SEARCH_INCLUDES tag is set to YES (the default) the includes files
+# in the INCLUDE_PATH (see below) will be search if a #include is found.
+
+SEARCH_INCLUDES        = YES
+
+# The INCLUDE_PATH tag can be used to specify one or more directories that
+# contain include files that are not input files but should be processed by
+# the preprocessor.
+
+INCLUDE_PATH           =
+
+# You can use the INCLUDE_FILE_PATTERNS tag to specify one or more wildcard
+# patterns (like *.h and *.hpp) to filter out the header-files in the
+# directories. If left blank, the patterns specified with FILE_PATTERNS will
+# be used.
+
+INCLUDE_FILE_PATTERNS  =
+
+# The PREDEFINED tag can be used to specify one or more macro names that
+# are defined before the preprocessor is started (similar to the -D option of
+# gcc). The argument of the tag is a list of macros of the form: name
+# or name=definition (no spaces). If the definition and the = are
+# omitted =1 is assumed. To prevent a macro definition from being
+# undefined via #undef or recursively expanded use the := operator
+# instead of the = operator.
+
+PREDEFINED             =
+
+# If the MACRO_EXPANSION and EXPAND_ONLY_PREDEF tags are set to YES then
+# this tag can be used to specify a list of macro names that should be expanded.
+# The macro definition that is found in the sources will be used.
+# Use the PREDEFINED tag if you want to use a different macro definition.
+
+EXPAND_AS_DEFINED      =
+
+# If the SKIP_FUNCTION_MACROS tag is set to YES (the default) then
+# doxygen\'s preprocessor will remove all function-like macros that are alone
+# on a line, have an all uppercase name, and do not end with a semicolon. Such
+# function macros are typically used for boiler-plate code, and will confuse
+# the parser if not removed.
+
+SKIP_FUNCTION_MACROS   = YES
+
+#---------------------------------------------------------------------------
+# Configuration::additions related to external references
+#---------------------------------------------------------------------------
+
+# The TAGFILES option can be used to specify one or more tagfiles.
+# Optionally an initial location of the external documentation
+# can be added for each tagfile. The format of a tag file without
+# this location is as follows:
+#
+# TAGFILES = file1 file2 ...
+# Adding location for the tag files is done as follows:
+#
+# TAGFILES = file1=loc1 "file2 = loc2" ...
+# where "loc1" and "loc2" can be relative or absolute paths or
+# URLs. If a location is present for each tag, the installdox tool
+# does not have to be run to correct the links.
+# Note that each tag file must have a unique name
+# (where the name does NOT include the path)
+# If a tag file is not located in the directory in which doxygen
+# is run, you must also specify the path to the tagfile here.
+
+TAGFILES               =
+
+# When a file name is specified after GENERATE_TAGFILE, doxygen will create
+# a tag file that is based on the input files it reads.
+
+GENERATE_TAGFILE       =
+
+# If the ALLEXTERNALS tag is set to YES all external classes will be listed
+# in the class index. If set to NO only the inherited external classes
+# will be listed.
+
+ALLEXTERNALS           = NO
+
+# If the EXTERNAL_GROUPS tag is set to YES all external groups will be listed
+# in the modules index. If set to NO, only the current project\'s groups will
+# be listed.
+
+EXTERNAL_GROUPS        = YES
+
+# The PERL_PATH should be the absolute path and name of the perl script
+# interpreter (i.e. the result of `which perl\').
+
+PERL_PATH              = /usr/bin/perl
+
+#---------------------------------------------------------------------------
+# Configuration options related to the dot tool
+#---------------------------------------------------------------------------
+
+# If the CLASS_DIAGRAMS tag is set to YES (the default) Doxygen will
+# generate a inheritance diagram (in HTML, RTF and LaTeX) for classes with base
+# or super classes. Setting the tag to NO turns the diagrams off. Note that
+# this option is superseded by the HAVE_DOT option below. This is only a
+# fallback. It is recommended to install and use dot, since it yields more
+# powerful graphs.
+
+CLASS_DIAGRAMS         = YES
+
+# You can define message sequence charts within doxygen comments using the \\msc
+# command. Doxygen will then run the mscgen tool (see
+# http://www.mcternan.me.uk/mscgen/) to produce the chart and insert it in the
+# documentation. The MSCGEN_PATH tag allows you to specify the directory where
+# the mscgen tool resides. If left empty the tool is assumed to be found in the
+# default search path.
+
+MSCGEN_PATH            =
+
+# If set to YES, the inheritance and collaboration graphs will hide
+# inheritance and usage relations if the target is undocumented
+# or is not a class.
+
+HIDE_UNDOC_RELATIONS   = YES
+
+# If you set the HAVE_DOT tag to YES then doxygen will assume the dot tool is
+# available from the path. This tool is part of Graphviz, a graph visualization
+# toolkit from AT&T and Lucent Bell Labs. The other options in this section
+# have no effect if this option is set to NO (the default)
+
+HAVE_DOT               = YES
+
+# By default doxygen will write a font called FreeSans.ttf to the output
+# directory and reference it in all dot files that doxygen generates. This
+# font does not include all possible unicode characters however, so when you need
+# these (or just want a differently looking font) you can specify the font name
+# using DOT_FONTNAME. You need need to make sure dot is able to find the font,
+# which can be done by putting it in a standard location or by setting the
+# DOTFONTPATH environment variable or by setting DOT_FONTPATH to the directory
+# containing the font.
+
+DOT_FONTNAME           = FreeSans
+
+# The DOT_FONTSIZE tag can be used to set the size of the font of dot graphs.
+# The default size is 10pt.
+
+DOT_FONTSIZE           = 10
+
+# By default doxygen will tell dot to use the output directory to look for the
+# FreeSans.ttf font (which doxygen will put there itself). If you specify a
+# different font using DOT_FONTNAME you can set the path where dot
+# can find it using this tag.
+
+DOT_FONTPATH           =
+
+# If the CLASS_GRAPH and HAVE_DOT tags are set to YES then doxygen
+# will generate a graph for each documented class showing the direct and
+# indirect inheritance relations. Setting this tag to YES will force the
+# the CLASS_DIAGRAMS tag to NO.
+
+CLASS_GRAPH            = YES
+
+# If the COLLABORATION_GRAPH and HAVE_DOT tags are set to YES then doxygen
+# will generate a graph for each documented class showing the direct and
+# indirect implementation dependencies (inheritance, containment, and
+# class references variables) of the class with other documented classes.
+
+COLLABORATION_GRAPH    = YES
+
+# If the GROUP_GRAPHS and HAVE_DOT tags are set to YES then doxygen
+# will generate a graph for groups, showing the direct groups dependencies
+
+GROUP_GRAPHS           = YES
+
+# If the UML_LOOK tag is set to YES doxygen will generate inheritance and
+# collaboration diagrams in a style similar to the OMG\'s Unified Modeling
+# Language.
+
+UML_LOOK               = NO
+
+# If set to YES, the inheritance and collaboration graphs will show the
+# relations between templates and their instances.
+
+TEMPLATE_RELATIONS     = NO
+
+# If the ENABLE_PREPROCESSING, SEARCH_INCLUDES, INCLUDE_GRAPH, and HAVE_DOT
+# tags are set to YES then doxygen will generate a graph for each documented
+# file showing the direct and indirect include dependencies of the file with
+# other documented files.
+
+INCLUDE_GRAPH          = YES
+
+# If the ENABLE_PREPROCESSING, SEARCH_INCLUDES, INCLUDED_BY_GRAPH, and
+# HAVE_DOT tags are set to YES then doxygen will generate a graph for each
+# documented header file showing the documented files that directly or
+# indirectly include this file.
+
+INCLUDED_BY_GRAPH      = YES
+
+# If the CALL_GRAPH and HAVE_DOT options are set to YES then
+# doxygen will generate a call dependency graph for every global function
+# or class method. Note that enabling this option will significantly increase
+# the time of a run. So in most cases it will be better to enable call graphs
+# for selected functions only using the \\callgraph command.
+
+CALL_GRAPH             = NO
+
+# If the CALLER_GRAPH and HAVE_DOT tags are set to YES then
+# doxygen will generate a caller dependency graph for every global function
+# or class method. Note that enabling this option will significantly increase
+# the time of a run. So in most cases it will be better to enable caller
+# graphs for selected functions only using the \\callergraph command.
+
+CALLER_GRAPH           = NO
+
+# If the GRAPHICAL_HIERARCHY and HAVE_DOT tags are set to YES then doxygen
+# will graphical hierarchy of all classes instead of a textual one.
+
+GRAPHICAL_HIERARCHY    = YES
+
+# If the DIRECTORY_GRAPH, SHOW_DIRECTORIES and HAVE_DOT tags are set to YES
+# then doxygen will show the dependencies a directory has on other directories
+# in a graphical way. The dependency relations are determined by the #include
+# relations between the files in the directories.
+
+DIRECTORY_GRAPH        = YES
+
+# The DOT_IMAGE_FORMAT tag can be used to set the image format of the images
+# generated by dot. Possible values are png, jpg, or gif
+# If left blank png will be used.
+
+DOT_IMAGE_FORMAT       = png
+
+# The tag DOT_PATH can be used to specify the path where the dot tool can be
+# found. If left blank, it is assumed the dot tool can be found in the path.
+
+DOT_PATH               =
+
+# The DOTFILE_DIRS tag can be used to specify one or more directories that
+# contain dot files that are included in the documentation (see the
+# \\dotfile command).
+
+DOTFILE_DIRS           =
+
+# The DOT_GRAPH_MAX_NODES tag can be used to set the maximum number of
+# nodes that will be shown in the graph. If the number of nodes in a graph
+# becomes larger than this value, doxygen will truncate the graph, which is
+# visualized by representing a node as a red box. Note that doxygen if the
+# number of direct children of the root node in a graph is already larger than
+# DOT_GRAPH_MAX_NODES then the graph will not be shown at all. Also note
+# that the size of a graph can be further restricted by MAX_DOT_GRAPH_DEPTH.
+
+DOT_GRAPH_MAX_NODES    = 50
+
+# The MAX_DOT_GRAPH_DEPTH tag can be used to set the maximum depth of the
+# graphs generated by dot. A depth value of 3 means that only nodes reachable
+# from the root by following a path via at most 3 edges will be shown. Nodes
+# that lay further from the root node will be omitted. Note that setting this
+# option to 1 or 2 may greatly reduce the computation time needed for large
+# code bases. Also note that the size of a graph can be further restricted by
+# DOT_GRAPH_MAX_NODES. Using a depth of 0 means no depth restriction.
+
+MAX_DOT_GRAPH_DEPTH    = 0
+
+# Set the DOT_TRANSPARENT tag to YES to generate images with a transparent
+# background. This is disabled by default, because dot on Windows does not
+# seem to support this out of the box. Warning: Depending on the platform used,
+# enabling this option may lead to badly anti-aliased labels on the edges of
+# a graph (i.e. they become hard to read).
+
+DOT_TRANSPARENT        = NO
+
+# Set the DOT_MULTI_TARGETS tag to YES allow dot to generate multiple output
+# files in one run (i.e. multiple -o and -T options on the command line). This
+# makes dot run faster, but since only newer versions of dot (>1.8.10)
+# support this, this feature is disabled by default.
+
+DOT_MULTI_TARGETS      = YES
+
+# If the GENERATE_LEGEND tag is set to YES (the default) Doxygen will
+# generate a legend page explaining the meaning of the various boxes and
+# arrows in the dot generated graphs.
+
+GENERATE_LEGEND        = YES
+
+# If the DOT_CLEANUP tag is set to YES (the default) Doxygen will
+# remove the intermediate dot files that are used to generate
+# the various graphs.
+
+DOT_CLEANUP            = YES'    
+  }
+  
+  mdl.Component::crearFicheroKdevelop()
+  {
+	var name_to_lower:String = self.name.toLower();
+	//file(fpath + "/" + name_to_lower + "/" + name_to_lower + "Comp.kdevelop");
+	file(fpath + "/" + name_to_lower + ".kdevelop");
+'<?xml version = \'1.0\'?>
+<kdevelop>
+  <general>
+    <author>authorname</author>
+    <email>authormail</email>
+    <version>0.1</version>
+    <projectmanagement>KDevTrollProject</projectmanagement>
+    <primarylanguage>C++</primarylanguage>
+    <keywords>
+      <keyword>Qt</keyword>
+    </keywords>
+    <ignoreparts/>
+    <projectdirectory>.</projectdirectory>
+    <absoluteprojectpath>false</absoluteprojectpath>
+    <description/>
+    <versioncontrol>kdevsubversion</versioncontrol>
+    <projectname>'name_to_lower'</projectname>'
+    //<projectname>'name_to_lower'Comp</projectname>
+    '
+    <defaultencoding/>
+  </general>
+  <kdevfileview>
+    <groups>
+      <group pattern="*.cpp;*.cxx;*.h" name="Sources" />
+      <group pattern="*.ui" name="User Interface" />
+      <group pattern="*.png" name="Icons" />
+      <group pattern="*" name="Others" />
+      <hidenonprojectfiles>false</hidenonprojectfiles>
+      <hidenonlocation>false</hidenonlocation>
+    </groups>
+    <tree>
+      <hidepatterns>*.o,*.lo,CVS</hidepatterns>
+      <hidenonprojectfiles>false</hidenonprojectfiles>
+      <showvcsfields>false</showvcsfields>
+    </tree>
+  </kdevfileview>
+  <kdevdoctreeview>
+    <ignoretocs>
+      <toc>ada</toc>
+      <toc>ada_bugs_gcc</toc>
+      <toc>bash</toc>
+      <toc>bash_bugs</toc>
+      <toc>clanlib</toc>
+      <toc>w3c-dom-level2-html</toc>
+      <toc>fortran_bugs_gcc</toc>
+      <toc>gnome1</toc>
+      <toc>gnustep</toc>
+      <toc>gtk</toc>
+      <toc>gtk_bugs</toc>
+      <toc>haskell</toc>
+      <toc>haskell_bugs_ghc</toc>
+      <toc>java_bugs_gcc</toc>
+      <toc>java_bugs_sun</toc>
+      <toc>kde2book</toc>
+      <toc>opengl</toc>
+      <toc>pascal_bugs_fp</toc>
+      <toc>php</toc>
+      <toc>php_bugs</toc>
+      <toc>perl</toc>
+      <toc>perl_bugs</toc>
+      <toc>python</toc>
+      <toc>python_bugs</toc>
+      <toc>ruby</toc>
+      <toc>ruby_bugs</toc>
+      <toc>sdl</toc>
+      <toc>stl</toc>
+      <toc>w3c-svg</toc>
+      <toc>sw</toc>
+      <toc>w3c-uaag10</toc>
+      <toc>wxwidgets_bugs</toc>
+    </ignoretocs>
+    <ignoredoxygen>
+      <toc>KDE Libraries (Doxygen)</toc>
+    </ignoredoxygen>
+  </kdevdoctreeview>
+  <kdevdebugger>
+    <general>
+      <dbgshell/>
+      <programargs/>
+      <gdbpath/>
+      <configGdbScript/>
+      <runShellScript/>
+      <runGdbScript/>
+      <breakonloadinglibs>true</breakonloadinglibs>
+      <separatetty>false</separatetty>
+      <floatingtoolbar>false</floatingtoolbar>
+    </general>
+    <display>
+      <staticmembers>false</staticmembers>
+      <demanglenames>true</demanglenames>
+      <outputradix>10</outputradix>
+    </display>
+  </kdevdebugger>
+  <kdevtrollproject>
+    <run>
+      <mainprogram>./bin/'name_to_lower'</mainprogram>'
+      //<mainprogram>./bin/'name_to_lower'Comp</mainprogram>
+      '
+      <programargs>--Ice.Config=etc/generic_config.debug, etc/specific_config.debug</programargs>
+      <directoryradio>executable</directoryradio>
+      <customdirectory>/</customdirectory>
+      <terminal>false</terminal>
+      <autocompile>true</autocompile>
+      <envvars/>
+      <globaldebugarguments/>
+      <globalcwd>./bin</globalcwd>
+      <useglobalprogram>true</useglobalprogram>
+      <autoinstall>false</autoinstall>
+      <autokdesu>false</autokdesu>
+      <runarguments>
+        <'name_to_lower'/>'
+        // <'name_to_lower'Comp/>
+        '
+      </runarguments>
+      <cwd>
+        <'name_to_lower'>/home/synkro/Programacion/Uni/components/Components/'name_to_lower'</'name_to_lower'>'
+        //<'name_to_lower'Comp>/home/synkro/Programacion/Uni/components/Components/'name_to_lower'Comp</'name_to_lower'Comp>
+        '
+      </cwd>
+      <debugarguments>
+        <'name_to_lower'/>'
+        //<'name_to_lower'Comp/>
+        '
+      </debugarguments>
+    </run>
+    <general>
+      <activedir>src</activedir>
+    </general>
+    <make>
+      <abortonerror>true</abortonerror>
+      <numberofjobs>1</numberofjobs>
+      <dontact>false</dontact>
+      <makebin/>
+      <prio>0</prio>
+      <envvars>
+        <envvar value="../../../Features" name="QMAKEFEATURES" />
+      </envvars>
+      <runmultiplejobs>false</runmultiplejobs>
+    </make>
+    <subclassing/>
+    <qmake>
+      <savebehaviour>2</savebehaviour>
+      <replacePaths>false</replacePaths>
+      <disableDefaultOpts>true</disableDefaultOpts>
+    </qmake>
+  </kdevtrollproject>
+  <kdevfilecreate>
+    <filetypes/>
+    <useglobaltypes>
+      <type ext="ui" />
+      <type ext="cpp" />
+      <type ext="h" />
+      <type ext="ts" />
+    </useglobaltypes>
+  </kdevfilecreate>
+  <kdevdocumentation>
+    <projectdoc>
+      <docsystem/>
+      <docurl/>
+      <usermanualurl/>
+    </projectdoc>
+  </kdevdocumentation>
+  <substmap>
+    <APPNAME>'name_to_lower'</APPNAME>
+    <APPNAMELC>'name_to_lower'</APPNAMELC>
+    <APPNAMESC>'name_to_lower'</APPNAMESC>
+    <APPNAMEUC>'self.name.toUpper()'</APPNAMEUC>
+    <AUTHOR>authorname</AUTHOR>
+    <EMAIL>authormail</EMAIL>
+    <LICENSE>Custom</LICENSE>
+    <VERSION>0.1</VERSION>
+    <YEAR>2006</YEAR>
+    <dest>.</dest>
+  </substmap>
+  <cppsupportpart>
+    <filetemplates>
+      <interfacesuffix>.h</interfacesuffix>
+      <implementationsuffix>.cpp</implementationsuffix>
+    </filetemplates>
+  </cppsupportpart>
+  <kdevcppsupport>
+    <qt>
+      <used>true</used>
+      <version>4</version>
+      <root>/usr/share/qt4</root>
+      <includestyle>4</includestyle>
+      <designerintegration>ExternalDesigner</designerintegration>
+      <qmake>/usr/bin/qmake-qt4</qmake>
+      <designer></designer>
+      <designerpluginpaths/>
+    </qt>
+    <codecompletion>
+      <includeGlobalFunctions>true</includeGlobalFunctions>
+      <includeTypes>true</includeTypes>
+      <includeEnums>true</includeEnums>
+      <includeTypedefs>false</includeTypedefs>
+      <automaticCodeCompletion>true</automaticCodeCompletion>
+      <automaticArgumentsHint>true</automaticArgumentsHint>
+      <automaticHeaderCompletion>true</automaticHeaderCompletion>
+      <codeCompletionDelay>250</codeCompletionDelay>
+      <argumentsHintDelay>400</argumentsHintDelay>
+      <headerCompletionDelay>250</headerCompletionDelay>
+      <showOnlyAccessibleItems>false</showOnlyAccessibleItems>
+      <completionBoxItemOrder>0</completionBoxItemOrder>
+      <howEvaluationContextMenu>true</howEvaluationContextMenu>
+      <showCommentWithArgumentHint>true</showCommentWithArgumentHint>
+      <statusBarTypeEvaluation>false</statusBarTypeEvaluation>
+      <namespaceAliases>std=_GLIBCXX_STD;__gnu_cxx=std</namespaceAliases>
+      <processPrimaryTypes>true</processPrimaryTypes>
+      <processFunctionArguments>false</processFunctionArguments>
+      <preProcessAllHeaders>false</preProcessAllHeaders>
+      <parseMissingHeaders>false</parseMissingHeaders>
+      <resolveIncludePaths>true</resolveIncludePaths>
+      <alwaysParseInBackground>true</alwaysParseInBackground>
+      <usePermanentCaching>true</usePermanentCaching>
+      <alwaysIncludeNamespaces>false</alwaysIncludeNamespaces>
+      <includePaths>.;</includePaths>
+      <parseMissingHeadersExperimental>false</parseMissingHeadersExperimental>
+      <resolveIncludePathsUsingMakeExperimental>false</resolveIncludePathsUsingMakeExperimental>
+    </codecompletion>
+    <creategettersetter>
+      <prefixGet/>
+      <prefixSet>set</prefixSet>
+      <prefixVariable>m_,_</prefixVariable>
+      <parameterName>theValue</parameterName>
+      <inlineGet>true</inlineGet>
+      <inlineSet>true</inlineSet>
+    </creategettersetter>
+    <references/>
+    <splitheadersource>
+      <enabled>false</enabled>
+      <synchronize>true</synchronize>
+      <orientation>Vertical</orientation>
+    </splitheadersource>
+  </kdevcppsupport>
+  <ctagspart>
+    <customArguments/>
+    <customTagfilePath>./tags</customTagfilePath>
+    <activeTagsFiles/>
+  </ctagspart>
+</kdevelop>'
+  }
+}

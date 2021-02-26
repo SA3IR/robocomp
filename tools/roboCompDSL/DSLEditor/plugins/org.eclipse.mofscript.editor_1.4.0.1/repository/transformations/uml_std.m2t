@@ -1,0 +1,68 @@
+/*
+  Copyright (c) 2005, 2006, 2007, 2008 SINTEF
+  All rights reserved. This program and the accompanying materials
+  are made available under the terms of the Eclipse Public License v1.0
+  which accompanies this distribution, and is available at
+  http://www.eclipse.org/legal/epl-v10.html
+
+  Contributors:
+     Jon Oldevik, Tor Neple, Gøran Olsen, SINTEF (Norway)
+  
+     Developed as part of the MODELWARE (http://www.modelware-ist.org/) and 
+    MODELPLEX (http://www.modelplex-ist.org/) IP projects 
+*/
+
+//
+// Standard imports for Java transformation
+//
+texttransformation uml_std (in uml:"http://www.eclipse.org/uml2/2.1.0/UML") {
+
+	/**
+	 * gets a stereotype tag placed as a keyword in an annotation
+	 */  
+	uml.Element::getStereotypeFromAnnotation (): String {
+	  self.eAnnotations->forEach(annot:ecore.EAnnotation | annot.source = "keywords") {
+	   result = annot.details.first().key
+	  }
+	}
+	
+/**
+ * Maps to java types
+ */
+	uml.Type::uml2JavaType ():String {
+	  if (self.name.equalsIgnoreCase("string"))
+	  	result = "String"
+	  else
+	    result = self.name
+	}
+
+
+   /**
+    * Private properties
+    */   
+   uml.Property::propertyPrivateName () : String {
+     result = "_" + self.name.toLower()
+   }
+   
+   /**
+    * Singular property names
+    */
+   uml.Property::propertySingleName () :String {
+     result = self.name.firstToUpper()
+   }
+   /**
+    * Plural property names
+    */
+   uml.Property::propertyPluralName () : String {
+     var pName:String = self.name.firstToUpper()
+     if (pName.endsWith("es"))
+     	result = pName;
+     else if (pName.endsWith("s"))
+        result = pName + "es";
+     else if (pName.endsWith("y"))
+        result = pName.substring(0, pName.size() - 1) + "ies"
+     else
+        result = pName + "s";
+   }
+   
+}

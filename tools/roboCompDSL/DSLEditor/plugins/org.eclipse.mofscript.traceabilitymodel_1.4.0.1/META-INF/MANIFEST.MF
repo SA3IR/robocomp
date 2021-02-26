@@ -1,0 +1,14 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: %pluginName
+Bundle-SymbolicName: org.eclipse.mofscript.traceabilitymodel;singleton:=true
+Bundle-Version: 1.4.0.1
+Bundle-ClassPath: org.eclipse.mofscript.traceabilitymodel.jar
+Bundle-Vendor: %providerName
+Bundle-ActivationPolicy: lazy
+Bundle-Localization: plugin
+Export-Package: org.eclipse.mofscript.traceabilitymodel,
+ org.eclipse.mofscript.traceabilitymodel.impl,
+ org.eclipse.mofscript.traceabilitymodel.util
+Require-Bundle: org.eclipse.core.runtime.compatibility,
+ org.eclipse.emf.ecore;visibility:=reexport

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.0"?>
+
+<!--
+/**
+ * <copyright>
+ * </copyright>
+ *
+ * $Id$
+ */
+-->
+
+<plugin>
+
+    <extension point="org.eclipse.emf.ecore.generated_package">
+    <package
+          class="org.eclipse.mofscript.fileresourcemodel.frm.FrmPackage"
+          genModel="frm.genmodel"
+          uri="http://org.eclipse.mofscript.fileresourcemodel"/>
+  </extension>
+
+</plugin>
+

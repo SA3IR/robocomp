@@ -1,0 +1,397 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.0"?>
+<plugin>
+
+     <extension
+         point="org.eclipse.ui.editors">
+      <editor
+            class="org.eclipse.mofscript.editor.MofScriptTextEditor"
+            contributorClass="org.eclipse.ui.texteditor.BasicTextEditorActionContributor"
+            extensions="m2t"
+            icon="icons/compile.gif"
+            id="org.eclipse.mofscript.editor.MofScriptTextEditor"
+            name="MofScriptTextEditor">
+      </editor>
+   </extension>
+   <extension
+         point="org.eclipse.ui.editorActions">
+      <editorContribution
+            targetID="org.eclipse.mofscript.editor.MofScriptTextEditor"
+            id="org.eclipse.mofscript.editor.MofScriptEditorActions">
+         <action
+               label="Execute Previous MofScript Transformation"
+               style="push"
+               icon="icons/runlast.gif"
+               tooltip="Execute Previos MOFScript Transformation"
+               class="org.eclipse.mofscript.editor.MofScriptEditorActionDelegate"
+               toolbarPath="MofScriptTextEditor"
+               actionID="org.eclipse.mofscript.editor.action.executePrevious"
+               id="org.eclipse.mofscript.editor.action.executePrevious">
+         </action>
+         <action
+               label="Execute Model to Text Transformation"
+               style="push"
+               icon="icons/execute.gif"
+               tooltip="Execute Model 2 Text"
+               class="org.eclipse.mofscript.editor.MofScriptEditorActionDelegate"
+               toolbarPath="MofScriptTextEditor"
+               actionID="org.eclipse.mofscript.editor.action.execute"
+               id="org.eclipse.mofscript.editor.action.execute">
+         </action>
+         <action
+               label="Compile Transformation"
+               style="push"
+               icon="icons/compile.gif"
+               tooltip="Compile MOFScript specification"
+               class="org.eclipse.mofscript.editor.MofScriptEditorActionDelegate"
+               toolbarPath="MofScriptTextEditor"
+               actionID="org.eclipse.mofscript.editor.action.compile"
+               id="org.eclipse.mofscript.editor.action.compile">
+         </action>
+      </editorContribution>
+   </extension>
+   <extension
+         point="org.eclipse.ui.preferencePages">
+      <page
+            name="MofScript Preferences"
+            class="org.eclipse.mofscript.editor.MofScriptPreferences"
+            id="org.eclipse.mofscript.editor.MofScriptPreferences">
+      </page>
+   </extension>
+   <extension
+         point="org.eclipse.core.filebuffers.annotationModelCreation">
+      <factory
+            class="org.eclipse.mofscript.editor.MofScriptAnnotationFactory"
+            extensions="m2t"/>
+   </extension>
+   <extension
+         point="org.eclipse.ui.popupMenus">
+      <objectContribution
+            id="org.eclipse.mofscript.editor.popupContribution"
+            nameFilter="*.m2t"
+            objectClass="org.eclipse.core.resources.IFile">
+         <menu
+               id="org.eclipse.mofscript.editor.menu1"
+               label="MOFScript"
+               path="additions">
+            <separator name="group1"/>
+         </menu>
+         <action
+               class="org.eclipse.mofscript.editor.MofScriptPopupActionDelegate"
+               enablesFor="1"
+               icon="icons/test.gif"
+               id="org.eclipse.mofscript.editor.action.popupStoreModel"
+               label="Convert to model"
+               menubarPath="org.eclipse.mofscript.editor.menu1/group1"/>
+         <action
+               class="org.eclipse.mofscript.editor.MofScriptPopupActionDelegate"
+               enablesFor="1"
+               icon="icons/execute.gif"
+               id="org.eclipse.mofscript.editor.action.popupExecute"
+               label="Execute"
+               menubarPath="org.eclipse.mofscript.editor.menu1/group1"/>
+         <action
+               class="org.eclipse.mofscript.editor.MofScriptPopupActionDelegate"
+               enablesFor="1"
+               icon="icons/compile.gif"
+               id="org.eclipse.mofscript.editor.action.popupCompile"
+               label="Compile"
+               menubarPath="org.eclipse.mofscript.editor.menu1/group1"
+               />
+      </objectContribution>
+	<viewerContribution id="org.eclipse.mofscript.editor.action.viewerPopup1"
+   		targetID="#TextEditorContext"> 
+   <action
+         class="org.eclipse.mofscript.editor.MofScriptEditorActionDelegate"
+         icon="icons/compile.gif"
+         id="org.eclipse.mofscript.editor.action.viewerCompile"
+         label="MOFScript compile"
+         menubarPath="additions"> 
+      </action>
+   <action
+         class="org.eclipse.mofscript.editor.MofScriptEditorActionDelegate"
+         icon="icons/runlast.gif"
+         id="org.eclipse.mofscript.editor.action.viewerExecutePrevious"
+         label="MOFScript Execute Previous"
+         menubarPath="additions"/>
+   <action
+         class="org.eclipse.mofscript.editor.MofScriptEditorActionDelegate"
+         icon="icons/execute.gif"
+         id="org.eclipse.mofscript.editor.action.viewerExecute"
+         label="MOFScript execute"
+         menubarPath="additions"/>
+   <action
+         class="org.eclipse.mofscript.editor.MofScriptEditorActionDelegate"
+         icon="icons/brkp_obj.gif"
+         id="org.eclipse.mofscript.editor.action.addBreakPoint"
+         label="Add MOFScript breakpoint"
+         menubarPath="org.eclipse.mofscript.editor.mofscriptViewerPopupMenu/group1">
+   </action>
+   <action
+         class="org.eclipse.mofscript.editor.MofScriptEditorActionDelegate"
+         icon="icons/delete.gif"
+         id="org.eclipse.mofscript.editor.action.removeBreakPointAt"
+         label="Remove MOFScript breakpoint"
+         menubarPath="org.eclipse.mofscript.editor.mofscriptViewerPopupMenu/group1">
+   </action>
+   <action
+         class="org.eclipse.mofscript.editor.MofScriptEditorActionDelegate"
+         icon="icons/delete.gif"
+         id="org.eclipse.mofscript.editor.action.removeAllBreakPoints"
+         label="Remove all breakpoints"
+         menubarPath="org.eclipse.mofscript.editor.mofscriptViewerPopupMenu/group1">
+   </action>
+   <action
+         class="org.eclipse.mofscript.editor.MofScriptEditorActionDelegate"
+         icon="icons/debug2.gif"
+         id="org.eclipse.mofscript.editor.action.debug"
+         label="MOFScript debug"
+         menubarPath="org.eclipse.mofscript.editor.mofscriptViewerPopupMenu/group1">
+   </action>
+   <action
+         class="org.eclipse.mofscript.editor.MofScriptEditorActionDelegate"
+         icon="icons/resume_co.gif"
+         id="org.eclipse.mofscript.editor.action.debugcont"
+         label="Continue Debug"
+         menubarPath="org.eclipse.mofscript.editor.mofscriptViewerPopupMenu/group1">
+   </action>
+   <action
+         class="org.eclipse.mofscript.editor.MofScriptEditorActionDelegate"
+         icon="icons/stepover_co.gif"
+         id="org.eclipse.mofscript.editor.action.debugstep"
+         label="Step"
+         menubarPath="org.eclipse.mofscript.editor.mofscriptViewerPopupMenu/group1">
+   </action>
+   <action
+         class="org.eclipse.mofscript.editor.MofScriptEditorActionDelegate"
+         icon="icons/progress_stop.gif"
+         id="org.eclipse.mofscript.editor.action.debugstop"
+         label="Cancel debug"
+         menubarPath="org.eclipse.mofscript.editor.mofscriptViewerPopupMenu/group1">
+   </action>
+   <menu
+         icon="icons/debug.gif"
+         id="org.eclipse.mofscript.editor.mofscriptViewerPopupMenu"
+         label="MOFScript Debug"
+         path="additions">
+      <separator
+            name="group1">
+      </separator>
+   </menu> 
+     </viewerContribution>
+ <objectContribution
+       adaptable="false"
+       id="org.eclipse.mofscript.editor.popupContributionModel"
+       nameFilter="*.mofscript"
+       objectClass="org.eclipse.core.resources.IFile">
+    <action
+          class="org.eclipse.mofscript.editor.MofScriptPopupActionDelegate"
+          enablesFor="1"
+          icon="icons/execute.gif"
+          id="org.eclipse.mofscript.editor.action.executeModelDirect"
+          label="Execute Model Directly"
+          menubarPath="org.eclipse.mofscript.editor.menu2/group1"/>
+    <menu
+          id="org.eclipse.mofscript.editor.menu2"
+          label="MOFScript"
+          path="additions">
+       <separator name="group1"/>
+    </menu>
+    <action
+      class="org.eclipse.mofscript.editor.MofScriptPopupActionDelegate"
+      enablesFor="1"
+      icon="icons/test.gif"
+      id="org.eclipse.mofscript.editor.action.mofscriptModel2Text"
+      label="MOFScript Model 2 Text"
+      menubarPath="org.eclipse.mofscript.editor.menu2/group1"/>
+ </objectContribution>       
+   </extension>
+   <extension
+         point="org.eclipse.ui.propertyPages">
+      <page
+            class="org.eclipse.mofscript.editor.properties.MofScriptPropertyPage"
+            icon="icons/compile.gif"
+            id="org.eclipse.mofscript.editor.properties.mofscriptPropertyPage"
+            name="MOFScript Properties"
+            nameFilter="*.m2t"
+            objectClass="org.eclipse.core.resources.IFile"/>
+   </extension>
+   <extension
+         point="org.eclipse.ui.newWizards">
+      <category
+            id="org.eclipse.mofscript.editor.filewizard"
+            name="MOFScript"/>
+      <wizard
+            category="org.eclipse.mofscript.editor.filewizard"
+            class="org.eclipse.mofscript.editor.wizards.MofScriptNewWizard"
+            icon="icons/compile.gif"
+            id="org.eclipse.mofscript.editor.wizards.MofScriptNewWizard"
+            name="MOFScript File"/>
+   </extension>
+   <extension
+         point="org.eclipse.help.toc">
+      <toc
+            file="help/toc.xml"
+            primary="true"/>
+      <toc file="help/tocconcepts.xml"/>
+      <toc file="help/tocgettingstarted.xml"/>
+      <toc file="help/tocreference.xml"/>
+      <toc file="help/tocsamples.xml"/>
+   </extension>
+   <extension
+         point="org.eclipse.ui.views">
+      <category
+            id="org.eclipse.mofscript.editor"
+            name="MOFScript Debug Category">
+      </category>
+      <view
+            category="org.eclipse.mofscript.editor"
+            class="org.eclipse.mofscript.editor.views.MOFScriptDebugView"
+            icon="icons/debug.gif"
+            id="org.eclipse.mofscript.editor.views.MOFScriptDebugView"
+            name="MOFScript Debug View">
+      </view>
+   </extension>
+   <extension
+         point="org.eclipse.help.contexts">
+      <contexts
+            file="contexts.xml">
+      </contexts>
+      <contexts
+            file="contexts.xml">
+      </contexts>
+   </extension>
+   <extension
+         id="org.eclipse.mofscript.breakpointmarker"
+         name="MOFScript Breakpointmarker"
+         point="org.eclipse.core.resources.markers">
+      <persistent
+            value="false">
+      </persistent>
+      <super
+            type="org.eclipse.core.resources.problemmarker">
+      </super>
+   </extension>
+   <extension
+         id="org.eclipse.mofscript.breakpointmarkerstop"
+         name="MOFScript Breakpointmarker"
+         point="org.eclipse.core.resources.markers">
+      <persistent
+            value="false">
+      </persistent>
+      <super
+            type="org.eclipse.core.resources.problemmarker">
+      </super>
+   </extension>
+      
+   <extension
+         id="org.eclipse.mofscript.editor.breakPointAnnotation"
+         name="MOFScript BreakPointAnnotation"
+         point="org.eclipse.ui.editors.annotationTypes">
+      <type
+            markerSeverity="0"
+            markerType="org.eclipse.mofscript.breakpointmarker"
+            name="org.eclipse.mofscript.editor.breakPointAnnotation">
+      </type>
+   </extension>
+   
+   <extension
+         id="org.eclipse.mofscript.editor.breakPointAnnotationStop"
+         name="MOFScript BreakPointAnnotation"
+         point="org.eclipse.ui.editors.annotationTypes">
+      <type
+            markerSeverity="0"
+            markerType="org.eclipse.mofscript.breakpointmarkerstop"
+            name="org.eclipse.mofscript.editor.breakPointAnnotationStop">
+      </type>
+   </extension>   
+   
+   <extension
+         id="org.eclipse.mofscript.editor.breakPointAnnotationSpec"
+         name="MOFScript BreakPointAnnotSpec"
+         point="org.eclipse.ui.editors.markerAnnotationSpecification">
+      <specification
+            annotationType="org.eclipse.mofscript.editor.breakPointAnnotation"
+            colorPreferenceKey="mofscriptBreakPointColor"
+            colorPreferenceValue="255,0,0"
+            contributesToHeader="true"
+            highlightPreferenceValue="true"
+            icon="icons/brkp_obj.gif"
+            includeOnPreferencePage="true"
+            label="MOFScript Breakpoint"
+            overviewRulerPreferenceKey="mofscriptBreakPointOverview"
+            overviewRulerPreferenceValue="true"
+            textPreferenceKey="mofscriptBreakPointPreference"
+            textPreferenceValue="true"
+            verticalRulerPreferenceKey="mofscriptBreakPointVertical"
+            verticalRulerPreferenceValue="true">
+      </specification>
+   </extension>
+   
+   <extension
+         id="org.eclipse.mofscript.editor.breakPointAnnotationStopSpec"
+         name="MOFScript BreakPointAnnotStopSpec"
+         point="org.eclipse.ui.editors.markerAnnotationSpecification">
+      <specification
+            annotationType="org.eclipse.mofscript.editor.breakPointAnnotationStop"
+            colorPreferenceKey="mofscriptBreakPointColor"
+            colorPreferenceValue="255,0,0"
+            contributesToHeader="true"
+            highlightPreferenceValue="true"
+            icon="icons/brkp_obj_stop.gif"
+            includeOnPreferencePage="true"
+            label="MOFScript Breakpoint"
+            overviewRulerPreferenceKey="mofscriptBreakPointOverview"
+            overviewRulerPreferenceValue="true"
+            textPreferenceKey="mofscriptBreakPointPreference"
+            textPreferenceValue="true"
+            verticalRulerPreferenceKey="mofscriptBreakPointVertical"
+            verticalRulerPreferenceValue="true">
+      </specification>
+   </extension>   
+   
+   <extension
+         id="org.eclipse.mofscript.bindings"
+         name="MOFScript Bindings"
+         point="org.eclipse.ui.bindings">
+      <key
+            commandId="org.eclipse.mofscript.DebugStep"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
+            sequence="F6">
+      </key>
+      <key
+            commandId="org.eclipse.mofscript.DebugCont"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
+            sequence="F8">
+      </key>
+   </extension>
+   <extension
+         id="org.eclipse.mofscript.context"
+         name="MOFScript Context"
+         point="org.eclipse.ui.contexts">
+      <context
+            description="MOFScript Context"
+            id="org.eclipse.mofscript.context"
+            name="MOFScript Context"
+            parentId="org.eclipse.ui.textEditorScope">
+      </context>
+   </extension>
+   <extension
+         id="org.eclipse.mofscript.commands"
+         name="MOFScript Commands"
+         point="org.eclipse.ui.commands">
+      <command
+            defaultHandler="org.eclipse.mofscript.editor.KeyCommandHandler"
+            description="DebugStep"
+            id="org.eclipse.mofscript.DebugStep"
+            name="MOFScript DebugStep">
+      </command>
+      <command
+            defaultHandler="org.eclipse.mofscript.editor.KeyCommandHandler"
+            description="Continue Debug"
+            id="org.eclipse.mofscript.DebugCont"
+            name="Continue Debug">
+      </command>
+   </extension>
+
+</plugin>

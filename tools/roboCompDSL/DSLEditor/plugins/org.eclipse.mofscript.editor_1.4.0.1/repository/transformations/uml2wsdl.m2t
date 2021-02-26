@@ -1,0 +1,284 @@
+/*
+  Copyright (c) 2005, 2006, 2007, 2008 SINTEF
+  All rights reserved. This program and the accompanying materials
+  are made available under the terms of the Eclipse Public License v1.0
+  which accompanies this distribution, and is available at
+  http://www.eclipse.org/legal/epl-v10.html
+
+  Contributors:
+     Jon Oldevik, Tor Neple, Gøran Olsen, SINTEF (Norway)
+  
+     Developed as part of the MODELWARE (http://www.modelware-ist.org/) and 
+    MODELPLEX (http://www.modelplex-ist.org/) IP projects 
+*/
+
+/*
+*
+* MOFScript UML2 to WSDL Transformation
+*
+*/
+
+textmodule UML2WSDL (in uml:"http://www.eclipse.org/uml2/2.0.0/UML")
+
+// access library Wsdllib ("wsdl_library.m2t")
+import uml_std ("uml_std.m2t")
+
+property nameSpaceBase = "http://mofscript.org/"
+property business_service_pack = "BusinessServiceSpec"
+property type_namespace = "types"
+property hostname = "http://localhost:8080"
+
+//
+// main
+//
+uml.Model::main () {  
+  self.ownedMember->forEach(p:uml.Package){
+  	stdout.println("Main")
+  	p.interfacePackage()
+  }
+}
+
+//
+// interfacePackage
+//
+uml.Package::interfacePackage () {
+//  if (self.name = "Interface Model") {
+    stdout.println("interfacePackage")
+    self.ownedMember->forEach(p:uml.Package) {
+      p.interfacePackages()
+    }
+//  } else {
+//    stdout.println ("Error in model: 'No Interface model'")
+//  }
+  
+}
+
+//
+// interfacePackages
+//
+uml.Package::interfacePackages () {
+//  if (self.hasStereotype(business_service_pack) {
+     stdout.println("interfacePackages")
+    file (self.name.toLower() + ".wsdl")    
+    self.wsdlHeader()
+    self.wsdlTypes()        
+    self.ownedMember->forEach(i:uml.Interface) {
+      i.wsdlMessages()
+      i.wsdlPortType()
+      i.wsdlBindings()
+      i.wsdlService()      
+    }    
+    self.wsdlFooter()
+//  }
+}
+
+/**********
+* wsdl Types
+**********/
+uml.Package::wsdlTypes () {
+  property pName = self.name.toLower()  
+  <%
+    <types> 
+      <xsd:schema targetNamespace="%> nameSpaceBase + pName <%/%> type_namespace <%/"
+              xmlns:xsd="http://www.w3.org/2000/10/XMLSchema">%> 
+  self.ownedMember->forEach(class:uml.Class | class.hasStereotype("Entity")) {
+   class.wsdlTypeMapping()
+  }  
+   <% 
+      </xsd:schema>
+   </types>
+   %>
+}
+
+
+/*
+ * wsdl Header 
+ *
+ */
+uml.Package::wsdlHeader () {
+  property pName = self.name.toLower()
+  <%<?xml version="1.0"?>
+<definitions name="%> self.name <%"
+targetNamespace="%> nameSpaceBase + pName <%.wsdl"
+          xmlns:tns="%> nameSpaceBase + pName <%.wsdl"
+          xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+		  xmlns:%> type_namespace <%="%> nameSpaceBase + pName <%/%> type_namespace <%/"
+          xmlns="http://schemas.xmlsoap.org/wsdl/">
+     
+  %>
+}
+
+uml.Package::wsdlFooter () {
+<%
+</definitions>
+%>
+}
+
+uml.Interface::wsdlPortType () {
+  property portTypeName = self.name + "_PortType"
+  <%
+   <portType name="%> portTypeName <%">%>  
+    self.ownedOperation->forEach(o:uml.Operation) {
+      o.portTypeOperation()
+    }
+  <%
+   </portType>
+  %>
+}
+
+uml.Interface::wsdlBindings() {
+  //property bindingName = self.name + "_Binding"
+  <%
+   <binding name="%> self.name + "_Binding" <%" type="tns:%> self.name + "_PortType" <%">
+   		<soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>%>
+    	self.ownedOperation->forEach(o:uml.Operation) {
+      		o.bindingOperation()
+    	}
+  <%
+   </binding>
+  %> 
+}
+
+uml.Operation::portTypeOperation () {
+  <%
+      <operation name="%> self.name <%"%> 
+    if (self.ownedParameter.size() > 0) { 
+     	<% parameterOrder="%> self.getParameterOrder() 	<%"%>
+     }
+    <%>%>
+    if (self.ownedParameter.size() > 0) {
+      <%  
+         <input message="tns:%> self.name <%_Request"/>%>
+    }
+    //returnResult.size...
+    if (self.type.name != null) {
+      <%  
+         <output message="tns:%> self.name <%_Response"/>%>      
+    }
+  <%
+      </operation> %>
+}
+
+/****
+** Parameter order
+******/
+uml.Operation::getParameterOrder () {  	
+  	self.ownedParameter->forEach(prm:uml.Parameter) {
+  		/*if (prm = self.ownedParameter->first()) { 	
+			<%%> prm.name 
+			}*/
+		if (prm <> self.ownedParameter.first()) { 	
+			<% %> prm.name  
+		}
+	} 
+}
+
+uml.Operation::bindingOperation () {  	
+	<%
+		<operation name="%> self.name <%">
+			<soap:operation soapAction="%> nameSpaceBase + /*self.classifier.name <%/%>*/ self.name <%" style="document"/>			
+			<input>
+				<soap:body%> 
+					if (self.ownedParameter.size() > 0) {
+						<% parts="%> self.getParameterOrder() <%"%>
+						}
+				<% use="literal"/>
+			</input>
+			<output>
+				<soap:body%> 
+					if (self.type.name != null) {
+						<% parts="response"%>
+						}
+				<% use="literal"/>
+			</output>
+		</operation>
+	%>
+}
+
+
+/****
+** wsdlService
+****/
+uml.Interface::wsdlService () {
+	<%
+		<service name="%> self.name <%">
+			<port name="%> self.name + "_Port" <%" binding="%> self.name + "_Binding" <%">
+				<soap:address location="%> hostname + self.name <%"/>
+			</port>
+		</service>
+	%>			 
+}
+
+
+/*****
+**   wsdlMessages
+******/
+uml.Interface::wsdlMessages () {
+    self.ownedOperation->forEach(o:uml.Operation) {
+      o.wsdlMessage()
+    }  
+}
+
+/*******
+*    wsdl Message
+********/
+uml.Operation::wsdlMessage () {  
+  if (self.ownedParameter.size() > 0) {
+    <%  
+    <message name="%> self.name <%_Request">%>
+	  self.ownedParameter->forEach(p:uml.Parameter) {
+	    <%
+       <part element="%> p.getType() <%" name="%> p.name <%"/> %>
+	  }
+    <%
+    </message>%>
+  }  
+  if (self.type.name != null) {
+    newline
+    <%  
+    <message name="%> self.name <%_Response"> %>
+	  self.ownedParameter->forEach(p:uml.Parameter) {
+	    <%
+       <part element="%> p.getType() <%" name="response"/> %>
+	  }
+    <%
+    </message>%>
+  }  
+}
+
+//
+// getParameterType - returns name of propery as String
+//
+
+uml.TypedElement::getType () : String {
+  result =  type_namespace + ":" + self.type.name
+  if (self.type.name.equalsIgnoreCase("string"))
+  	result = "xsd:string"
+  if (self.type.name.equalsIgnoreCase("integer"))
+  	result = "xsd:integer"
+  if (self.type.name.equalsIgnoreCase("boolean"))
+  	result = "xsd:boolean"
+}
+
+///
+/// wsdl TypeMapping
+///
+uml.Class::wsdlTypeMapping() {
+  <% 
+       <xsd:element name="%> self.name <%">
+         <xsd:complexType>
+           <xsd:all>%>
+             self.ownedAttribute->forEach(a:uml.Property) {
+             <% 
+             <xsd:element name="%> a.name <%" type="%> a.getType() <%"/>%>
+           }
+  <%
+           </xsd:all>
+         </xsd:complexType>
+       </xsd:element>%>
+}
+
+
+
+
+

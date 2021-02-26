@@ -1,0 +1,34 @@
+import "ASREchord.idsl";
+module RoboCompCAITouchScreenEchord
+{
+	
+	interface AgentToTouchScreenComp
+	{
+		void setTestConfig(RoboCompASREchord::TestConfig config);
+		void setText(string label);
+		void canAnswer(bool timeToAnswer, int questionNumber);
+		void clearText();
+		void disableMicrophone(bool disable);
+		void setSliderVolumeValue(double value);
+		void callClinicianFromUI();
+		void stopVideo();
+		void resumeVideo();
+		void pauseVideo();
+		void showEchordLogo();
+	};
+
+	interface TouchScreenCompToAgent
+	{
+		void finishWrittingEvent(bool finish);
+		void setAnswer(string answer);
+		void stopTest();
+		void resumeTest();
+		void correctLastResponse();
+		void repeatLastQuestion();
+		void setVolume(double value);
+		void callClinician();
+		void startGetUpAndGo();
+	};
+	
+};
+

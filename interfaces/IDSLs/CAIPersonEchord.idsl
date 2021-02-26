@@ -1,0 +1,19 @@
+module RoboCompCAIPersonEchord
+{
+	
+ 	interface PersonCompToAgent{
+ 		
+ 		void IsPersonWithRobot(bool personWithRobot, int personId);
+ 		void IsFrontalFace(bool frontalFace);
+ 		void HandPositions(string positions);
+ 		
+ 	}; 
+
+	interface AgentToPersonComp{
+	
+		void AreEyesClosed(out bool eyesClosed);
+		void TrackingClosestPerson(bool closestTracked);
+		
+	};
+	
+};

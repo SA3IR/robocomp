@@ -1,0 +1,19 @@
+module RoboCompCAIPlannerItera
+{
+	interface AgentToPlanner
+	{
+		void isWaitingCall();
+		void plannerActionFinished();
+		void sayFinished();
+		void patientFound();
+		void callFinished();
+		void robotIsCharging();
+		void callCancelled();	
+	};
+	interface PlannerToAgent
+	{
+		void nextAction(string action, string attr);
+		void nextActions(string action1, string attr1, string action2, string attr2);
+	};
+	
+};

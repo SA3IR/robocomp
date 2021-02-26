@@ -1,0 +1,13 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: %pluginName
+Bundle-SymbolicName: org.eclipse.mofscript.model; singleton:=true
+Bundle-Version: 1.4.0.1
+Bundle-ClassPath: org.eclipse.mofscript.model.jar
+Bundle-Vendor: %providerName
+Bundle-Localization: plugin
+Bundle-ActivationPolicy: lazy
+Export-Package: org.eclipse.mofscript.MOFScriptModel,
+ org.eclipse.mofscript.MOFScriptModel.impl,
+ org.eclipse.mofscript.MOFScriptModel.util
+Require-Bundle: org.eclipse.emf.ecore;bundle-version="2.5.0"
