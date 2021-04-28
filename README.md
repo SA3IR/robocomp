@@ -45,7 +45,7 @@ Note: One of the main tools of Robocomp, robocompdsl is using pyparsing and the 
 
 *cd* to your home directory (you are probably in it already) and type:
 
-    git clone https://github.com/robocomp/robocomp.git
+    git clone https://github.com/SA3IR/robocomp.git
 
 Now we will create a symbolic link so RoboComp can find everything. You will have to enter your password:
 
@@ -79,8 +79,6 @@ Done! Now let's compile and install the whole thing:
 Create the .rcremote file in the home folder. It should look like the following:
 
 localhost#blabla
-
-If you want to compile Robocomp with support for FCL, follow the instructions in the [Robocomp with FCL](doc/Compiling-RoboComp-with-collision-detection.md) tutorial.
 
 The RoboComp's core libraries and simulator should now be compiled and installed in `/opt/robocomp`.
 
