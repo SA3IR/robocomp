@@ -24,17 +24,24 @@ module RoboCompNavigator{
 		void  stop();
 		bool isActive();
 		bool goTo(float x, float z, float angle);
+		bool goBackWardsTo(float x, float z, float angle);
 		bool goToDockStation();
 		bool goToBasePoint();
+		bool rotate(float angle);
 		string dockingStatus();
 		void setOdometry(float x, float z, float angle);
 		void setPathVel(Trajectory path, float advVel, float rotVel);
 		bool setOrientation(float angle); 
+		void forkLiftUp();
+		void forkLiftDown(); 
 	};
 	interface LocalNavigatorReportState{
 		void  reportRobotState(float distanceToGoal, float angToGoal, int timeElapsed,  navigationState state);
 		void  reportRobotPose(float x, float z, float angle);
 		void  reportRobotBatteryLevel(RobotBatteryLevel batteryLevel);
+		void  reportForkLiftState(string status);
+		void  reportAPTSensor(float distance);
+		void  reportLimitSwitchState(bool state);
 	};
 };
 };
